@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Settings, User, Bell, Shield, Database, Palette, Globe, Save, UserPlus, Trash2, RefreshCw } from "lucide-react";
+import { Settings, User, Bell, Shield, Database, Palette, Globe, Save, UserPlus, Trash2, RefreshCw, Upload, Image as ImageIcon } from "lucide-react";
 import { resetToSampleData } from "@/utils/localStorage";
+import { BusinessInfo } from "@/types";
+import { businessInfoStorage } from "@/utils/localStorage";
 
 interface StaffMember {
   id: number;
@@ -37,7 +39,7 @@ export function SettingsModule() {
     customerApprovals: true,
   });
   
-  const [businessInfo, setBusinessInfo] = useState({
+  const [businessInfo, setBusinessInfo] = useState<BusinessInfo>({
     businessName: "Ranjit's Shoe & Bag Repair",
     ownerName: "Ranjit Kumar",
     phone: "+91 98765 43210",
@@ -46,7 +48,37 @@ export function SettingsModule() {
     gstNumber: "27XXXXX1234X1Z5",
     timezone: "Asia/Kolkata",
     currency: "INR",
+    logo: undefined,
+    website: "www.ranjitsrepair.com",
+    tagline: "Quality Repair Services"
   });
+
+  // Load business info from localStorage
+  useEffect(() => {
+    const savedBusinessInfo = businessInfoStorage.get();
+    setBusinessInfo(savedBusinessInfo);
+  }, []);
+
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const logoData = e.target?.result as string;
+        setBusinessInfo(prev => ({ ...prev, logo: logoData }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeLogo = () => {
+    setBusinessInfo(prev => ({ ...prev, logo: undefined }));
+  };
+
+  const saveBusinessInfo = () => {
+    businessInfoStorage.save(businessInfo);
+    alert("Business information saved successfully!");
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -84,74 +116,141 @@ export function SettingsModule() {
         <TabsContent value="business" className="space-y-6">
           <Card className="p-6 bg-gradient-card border-0 shadow-soft">
             <h3 className="text-lg font-semibold text-foreground mb-4">Business Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="businessName">Business Name</Label>
-                <Input 
-                  id="businessName"
-                  value={businessInfo.businessName}
-                  onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
-                />
+            <div className="space-y-6">
+              {/* Logo Upload */}
+              <div className="space-y-4">
+                <h4 className="font-medium text-foreground">Business Logo</h4>
+                <div className="flex items-center space-x-4">
+                  {businessInfo.logo ? (
+                    <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200">
+                      <img 
+                        src={businessInfo.logo} 
+                        alt="Business Logo" 
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 bg-gray-100 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-300">
+                      <ImageIcon className="h-8 w-8 text-gray-400" />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => document.getElementById('logoUpload')?.click()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Logo
+                      </Button>
+                      {businessInfo.logo && (
+                        <Button variant="outline" size="sm" onClick={removeLogo}>
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Recommended: 200x200px, PNG or JPG format
+                    </p>
+                    <input
+                      id="logoUpload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="ownerName">Owner Name</Label>
-                <Input 
-                  id="ownerName"
-                  value={businessInfo.ownerName}
-                  onChange={(e) => setBusinessInfo({...businessInfo, ownerName: e.target.value})}
-                />
+
+              <Separator />
+
+              {/* Business Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="businessName">Business Name</Label>
+                  <Input 
+                    id="businessName"
+                    value={businessInfo.businessName}
+                    onChange={(e) => setBusinessInfo({...businessInfo, businessName: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tagline">Tagline</Label>
+                  <Input 
+                    id="tagline"
+                    value={businessInfo.tagline}
+                    onChange={(e) => setBusinessInfo({...businessInfo, tagline: e.target.value})}
+                    placeholder="Quality Repair Services"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName">Owner Name</Label>
+                  <Input 
+                    id="ownerName"
+                    value={businessInfo.ownerName}
+                    onChange={(e) => setBusinessInfo({...businessInfo, ownerName: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="website">Website</Label>
+                  <Input 
+                    id="website"
+                    value={businessInfo.website}
+                    onChange={(e) => setBusinessInfo({...businessInfo, website: e.target.value})}
+                    placeholder="www.yourbusiness.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input 
+                    id="phone"
+                    value={businessInfo.phone}
+                    onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email"
+                    type="email"
+                    value={businessInfo.email}
+                    onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="address">Business Address</Label>
+                  <Textarea 
+                    id="address"
+                    value={businessInfo.address}
+                    onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gstNumber">GST Number</Label>
+                  <Input 
+                    id="gstNumber"
+                    value={businessInfo.gstNumber}
+                    onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select value={businessInfo.timezone} onValueChange={(value) => setBusinessInfo({...businessInfo, timezone: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST)</SelectItem>
+                      <SelectItem value="Asia/Mumbai">Asia/Mumbai (IST)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input 
-                  id="phone"
-                  value={businessInfo.phone}
-                  onChange={(e) => setBusinessInfo({...businessInfo, phone: e.target.value})}
-                />
+              <div className="flex justify-end mt-6">
+                <Button onClick={saveBusinessInfo} className="bg-gradient-primary hover:opacity-90">
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input 
-                  id="email"
-                  type="email"
-                  value={businessInfo.email}
-                  onChange={(e) => setBusinessInfo({...businessInfo, email: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="address">Business Address</Label>
-                <Textarea 
-                  id="address"
-                  value={businessInfo.address}
-                  onChange={(e) => setBusinessInfo({...businessInfo, address: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gstNumber">GST Number</Label>
-                <Input 
-                  id="gstNumber"
-                  value={businessInfo.gstNumber}
-                  onChange={(e) => setBusinessInfo({...businessInfo, gstNumber: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select value={businessInfo.timezone} onValueChange={(value) => setBusinessInfo({...businessInfo, timezone: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST)</SelectItem>
-                    <SelectItem value="Asia/Mumbai">Asia/Mumbai (IST)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end mt-6">
-              <Button className="bg-gradient-primary hover:opacity-90">
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </Button>
             </div>
           </Card>
         </TabsContent>

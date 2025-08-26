@@ -2,7 +2,8 @@ import {
   Enquiry, 
   InventoryItem, 
   Expense, 
-  StaffMember 
+  StaffMember,
+  BusinessInfo
 } from "@/types";
 
 import {
@@ -18,8 +19,138 @@ export const STORAGE_KEYS = {
   INVENTORY: 'cobbler_inventory',
   EXPENSES: 'cobbler_expenses',
   STAFF: 'cobbler_staff',
-  INITIALIZED: 'cobbler_initialized'
+  INITIALIZED: 'cobbler_initialized',
+  IMAGES: 'cobbler_images', // Separate storage for images
+  BUSINESS_INFO: 'cobbler_business_info' // Business information
 } as const;
+
+// Image storage management
+export const imageStorage = {
+  // Generate unique key for image
+  generateKey: (enquiryId: number, stage: string, type: string): string => {
+    return `img_${enquiryId}_${stage}_${type}`;
+  },
+
+  // Create thumbnail preview from image data
+  createThumbnail: (imageData: string, maxWidth: number = 150, maxHeight: number = 150): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          resolve(imageData); // Fallback to original if canvas not supported
+          return;
+        }
+
+        // Calculate thumbnail dimensions
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = (width * maxHeight) / height;
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw thumbnail
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convert to base64 with reduced quality
+        const thumbnailData = canvas.toDataURL('image/jpeg', 0.7);
+        resolve(thumbnailData);
+      };
+      
+      img.onerror = () => {
+        resolve(imageData); // Fallback to original if image fails to load
+      };
+      
+      img.src = imageData;
+    });
+  },
+
+  // Store image data as thumbnail
+  save: async (key: string, imageData: string): Promise<void> => {
+    try {
+      // Create thumbnail for storage
+      const thumbnailData = await imageStorage.createThumbnail(imageData);
+      localStorage.setItem(key, thumbnailData);
+    } catch (error) {
+      console.warn(`Failed to save image ${key}:`, error);
+      // If quota exceeded, try to clean old images
+      try {
+        const keys = Object.keys(localStorage);
+        const imageKeys = keys.filter(k => k.startsWith('img_'));
+        if (imageKeys.length > 20) {
+          // Remove oldest images
+          imageKeys.slice(0, 10).forEach(k => localStorage.removeItem(k));
+          const thumbnailData = await imageStorage.createThumbnail(imageData);
+          localStorage.setItem(key, thumbnailData);
+        }
+      } catch (cleanupError) {
+        console.error('Failed to save image even after cleanup:', cleanupError);
+      }
+    }
+  },
+
+  // Get image data
+  get: (key: string): string | null => {
+    try {
+      return localStorage.getItem(key);
+    } catch (error) {
+      console.error(`Error reading image ${key}:`, error);
+      return null;
+    }
+  },
+
+  // Remove image
+  remove: (key: string): void => {
+    try {
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error(`Error removing image ${key}:`, error);
+    }
+  },
+
+  // Create a simple placeholder image
+  createPlaceholder: (text: string, width: number = 150, height: number = 150): string => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) {
+      return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTUwIiBoZWlnaHQ9IjE1MCIgdmlld0JveD0iMCAwIDE1MCAxNTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxNTAiIGhlaWdodD0iMTUwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9Ijc1IiB5PSI3NSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEyIiBmaWxsPSIjNkI3MjgwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+UGxhY2Vob2xkZXI8L3RleHQ+Cjwvc3ZnPgo=';
+    }
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background
+    ctx.fillStyle = '#f3f4f6';
+    ctx.fillRect(0, 0, width, height);
+
+    // Border
+    ctx.strokeStyle = '#d1d5db';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, 0, width, height);
+
+    // Text
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, width / 2, height / 2);
+
+    return canvas.toDataURL('image/png', 0.8);
+  }
+};
 
 // Generic localStorage utilities
 export const storage = {
@@ -52,7 +183,7 @@ export const storage = {
       } catch (cleanupError) {
         console.error(`Failed to save even after cleanup:`, cleanupError);
         
-        // If still failing, try to compress the data
+        // If still failing, try to compress the data by removing large fields
         try {
           const compressedValue = JSON.stringify(value).replace(/data:image\/[^;]+;base64,[^"]+/g, '[IMAGE_DATA]');
           localStorage.setItem(key, compressedValue);
@@ -78,6 +209,9 @@ export const storage = {
       Object.values(STORAGE_KEYS).forEach(key => {
         localStorage.removeItem(key);
       });
+      // Also clear image data
+      const keys = Object.keys(localStorage);
+      keys.filter(k => k.startsWith('img_')).forEach(k => localStorage.removeItem(k));
     } catch (error) {
       console.error('Error clearing localStorage:', error);
     }
@@ -90,7 +224,7 @@ export const initializeData = (): void => {
   
   // Force reinitialize with new schema (remove this check after migration)
   const currentVersion = storage.get<string>('cobbler_schema_version', '1.0');
-  const newVersion = '2.6'; // Force refresh to implement corrected workflow
+  const newVersion = '4.0'; // Force refresh with new billing system
   
   if (!isInitialized || currentVersion !== newVersion) {
     console.log('Initializing localStorage with new integrated workflow data...');
@@ -113,45 +247,13 @@ export const initializeData = (): void => {
   }
 };
 
-// Helper function to clean image data to prevent quota issues
-const cleanImageData = (enquiries: Enquiry[]): Enquiry[] => {
-  return enquiries.map(enquiry => ({
-    ...enquiry,
-    pickupDetails: enquiry.pickupDetails ? {
-      ...enquiry.pickupDetails,
-      photos: {
-        beforePhoto: enquiry.pickupDetails.photos?.beforePhoto ? '[IMAGE_DATA]' : undefined,
-        afterPhoto: enquiry.pickupDetails.photos?.afterPhoto ? '[IMAGE_DATA]' : undefined,
-      }
-    } : undefined,
-    serviceDetails: enquiry.serviceDetails ? {
-      ...enquiry.serviceDetails,
-      serviceTypes: enquiry.serviceDetails.serviceTypes?.map(serviceType => ({
-        ...serviceType,
-        photos: {
-          beforePhoto: serviceType.photos?.beforePhoto ? '[IMAGE_DATA]' : undefined,
-          afterPhoto: serviceType.photos?.afterPhoto ? '[IMAGE_DATA]' : undefined,
-        }
-      })) || []
-    } : undefined,
-    deliveryDetails: enquiry.deliveryDetails ? {
-      ...enquiry.deliveryDetails,
-      photos: {
-        beforePhoto: enquiry.deliveryDetails.photos?.beforePhoto ? '[IMAGE_DATA]' : undefined,
-        afterPhoto: enquiry.deliveryDetails.photos?.afterPhoto ? '[IMAGE_DATA]' : undefined,
-      }
-    } : undefined,
-  }));
-};
-
 // Enquiries data management
 export const enquiriesStorage = {
   getAll: (): Enquiry[] => storage.get(STORAGE_KEYS.ENQUIRIES, []),
   
   save: (enquiries: Enquiry[]): void => {
-    // Clean image data before saving to prevent quota issues
-    const cleanedEnquiries = cleanImageData(enquiries);
-    storage.set(STORAGE_KEYS.ENQUIRIES, cleanedEnquiries);
+    // Save data directly without cleaning image data
+    storage.set(STORAGE_KEYS.ENQUIRIES, enquiries);
   },
   
   add: (enquiry: Omit<Enquiry, 'id'>): Enquiry => {
@@ -205,9 +307,9 @@ export const workflowHelpers = {
     return workflowHelpers.getByStage('service');
   },
   
-  // Get work-done stage enquiries
-  getWorkDoneEnquiries: (): Enquiry[] => {
-    return workflowHelpers.getByStage('work-done');
+  // Get billing stage enquiries
+  getBillingEnquiries: (): Enquiry[] => {
+    return workflowHelpers.getByStage('billing');
   },
   
   // Get delivery stage enquiries
@@ -340,6 +442,32 @@ export const staffStorage = {
   }
 };
 
+// Business info data management
+export const businessInfoStorage = {
+  get: (): BusinessInfo => storage.get(STORAGE_KEYS.BUSINESS_INFO, {
+    businessName: "Ranjit's Shoe & Bag Repair",
+    ownerName: "Ranjit Kumar",
+    phone: "+91 98765 43210",
+    email: "ranjit@example.com",
+    address: "123 MG Road, Pune, Maharashtra",
+    gstNumber: "27XXXXX1234X1Z5",
+    timezone: "Asia/Kolkata",
+    currency: "INR",
+    logo: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImxvZ29HcmFkaWVudCIgeDE9IjAlIiB5MT0iMCUiIHgyPSIxMDAlIiB5Mj0iMTAwJSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0eWxlPSJzdG9wLWNvbG9yOiMzQjgyRjY7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3R5bGU9InN0b3AtY29sb3I6IzFENEVEOEQ7c3RvcC1vcGFjaXR5OjEiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgcng9IjIwIiBmaWxsPSJ1cmwoI2xvZ29HcmFkaWVudCkiLz4KICA8Y2lyY2xlIGN4PSIxMDAiIGN5PSI4MCIgcj0iMjUiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjkiLz4KICA8cGF0aCBkPSJNNzAgMTIwIFEgMTAwIDE0MCAxMzAgMTIwIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjgiIGZpbGw9Im5vbmUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDx0ZXh0IHg9IjEwMCIgeT0iMTcwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmb250LXdlaWdodD0iYm9sZCI+UlNSPC90ZXh0Pgo8L3N2Zz4K",
+    website: "www.ranjitsrepair.com",
+    tagline: "Quality Repair Services"
+  }),
+  
+  save: (businessInfo: BusinessInfo): void => storage.set(STORAGE_KEYS.BUSINESS_INFO, businessInfo),
+  
+  update: (updates: Partial<BusinessInfo>): BusinessInfo => {
+    const current = businessInfoStorage.get();
+    const updated = { ...current, ...updates };
+    businessInfoStorage.save(updated);
+    return updated;
+  }
+};
+
 // Utility to reset all data to sample data
 export const resetToSampleData = (): void => {
   console.log('Resetting all data to sample data...');
@@ -367,4 +495,44 @@ export const importAllData = (data: ReturnType<typeof exportAllData>): void => {
   if (data.staff) storage.set(STORAGE_KEYS.STAFF, data.staff);
   
   console.log('Data import completed');
+};
+
+// Utility to handle image uploads with thumbnail creation
+export const imageUploadHelper = {
+  // Handle file upload and create thumbnail
+  handleImageUpload: async (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const imageData = e.target?.result as string;
+          // Create thumbnail immediately
+          const thumbnailData = await imageStorage.createThumbnail(imageData);
+          resolve(thumbnailData);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  },
+
+  // Save image with automatic thumbnail creation
+  saveImage: async (enquiryId: number, stage: string, type: string, imageData: string): Promise<void> => {
+    const key = imageStorage.generateKey(enquiryId, stage, type);
+    await imageStorage.save(key, imageData);
+  },
+
+  // Get image thumbnail
+  getImage: (enquiryId: number, stage: string, type: string): string | null => {
+    const key = imageStorage.generateKey(enquiryId, stage, type);
+    return imageStorage.get(key);
+  },
+
+  // Remove image
+  removeImage: (enquiryId: number, stage: string, type: string): void => {
+    const key = imageStorage.generateKey(enquiryId, stage, type);
+    imageStorage.remove(key);
+  }
 };

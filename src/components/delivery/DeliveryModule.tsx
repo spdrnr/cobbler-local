@@ -28,7 +28,7 @@ import {
   PenTool,
 } from "lucide-react";
 import { Enquiry, DeliveryStatus, DeliveryMethod } from "@/types";
-import { enquiriesStorage } from "@/utils/localStorage";
+import { enquiriesStorage, workflowHelpers, imageUploadHelper } from "@/utils/localStorage";
 
 export function DeliveryModule() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -36,14 +36,13 @@ export function DeliveryModule() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [customerSignature, setCustomerSignature] = useState<string | null>(null);
+  const [selectedDeliveryMethod, setSelectedDeliveryMethod] = useState<DeliveryMethod>("customer-pickup");
+  const [scheduledDateTime, setScheduledDateTime] = useState("");
 
   // Load enquiries that are in delivery stage
   useEffect(() => {
     const loadDeliveryEnquiries = () => {
-      const allEnquiries = enquiriesStorage.getAll();
-      const deliveryEnquiries = allEnquiries.filter(
-        (enquiry) => enquiry.currentStage === "delivery"
-      );
+      const deliveryEnquiries = workflowHelpers.getDeliveryEnquiries();
       setEnquiries(deliveryEnquiries);
     };
     
@@ -90,25 +89,29 @@ export function DeliveryModule() {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setSelectedImage(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        alert('Failed to process image. Please try again.');
+      }
     }
   };
 
-  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setCustomerSignature(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setCustomerSignature(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process signature:', error);
+        alert('Failed to process signature. Please try again.');
+      }
     }
   };
 
@@ -135,6 +138,18 @@ export function DeliveryModule() {
       return updated || enquiry;
     });
     enquiriesStorage.save(updatedAllEnquiries);
+
+    // Reset form
+    setSelectedDeliveryMethod("customer-pickup");
+    setScheduledDateTime("");
+
+    // Send WhatsApp notification
+    const enquiry = enquiries.find((e) => e.id === enquiryId);
+    if (enquiry) {
+      alert(
+        `WhatsApp sent to ${enquiry.customerName}!\n"Your ${enquiry.product} delivery has been scheduled for ${scheduledTime}."`
+      );
+    }
   };
 
   const markOutForDelivery = (enquiryId: number, assignedTo: string) => {
@@ -196,9 +211,9 @@ export function DeliveryModule() {
     
     enquiriesStorage.save(updatedAllEnquiries);
     
-    // Update local state to only show delivery stage enquiries
-    const remainingDeliveryEnquiries = updatedAllEnquiries.filter(e => e.currentStage === "delivery");
-    setEnquiries(remainingDeliveryEnquiries);
+    // Refresh delivery enquiries (the item will disappear since it's now in completed stage)
+    const updatedDeliveryEnquiries = workflowHelpers.getDeliveryEnquiries();
+    setEnquiries(updatedDeliveryEnquiries);
 
     // Reset form
     setSelectedImage(null);
@@ -366,6 +381,38 @@ export function DeliveryModule() {
                     Amount: ₹{enquiry.finalAmount || enquiry.quotedAmount || 0}
                   </span>
                 </div>
+
+                {/* DEBUG: Show what we have
+                <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                  <div>DEBUG INFO:</div>
+                  <div>Service afterPhoto: {enquiry.serviceDetails?.overallPhotos?.afterPhoto ? 'EXISTS' : 'MISSING'}</div>
+                  <div>Delivery beforePhoto: {enquiry.deliveryDetails?.photos?.beforePhoto ? 'EXISTS' : 'MISSING'}</div>
+                  <div>Current Stage: {enquiry.currentStage}</div>
+                </div> */}
+
+                {/* Show service final photo as before photo */}
+                {enquiry.deliveryDetails?.photos?.beforePhoto && (
+                  <div className="mt-3">
+                    <div className="text-xs text-muted-foreground mb-1">Service Completed Photo:</div>
+                    <img
+                      src={enquiry.deliveryDetails.photos.beforePhoto}
+                      alt="Service completed"
+                      className="w-full h-24 object-cover rounded-md border"
+                    />
+                  </div>
+                )}
+
+                {/* Fallback: Show service photo directly if delivery photo missing */}
+                {!enquiry.deliveryDetails?.photos?.beforePhoto && enquiry.serviceDetails?.overallPhotos?.afterPhoto && (
+                  <div className="mt-3">
+                    <div className="text-xs text-muted-foreground mb-1">Service Final Photo (Direct):</div>
+                    <img
+                      src={enquiry.serviceDetails.overallPhotos.afterPhoto}
+                      alt="Service completed"
+                      className="w-full h-24 object-cover rounded-md border"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
@@ -387,7 +434,7 @@ export function DeliveryModule() {
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <Label>Delivery Method</Label>
-                          <Select onValueChange={(value) => {}}>
+                          <Select onValueChange={(value) => setSelectedDeliveryMethod(value as DeliveryMethod)}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select delivery method" />
                             </SelectTrigger>
@@ -399,14 +446,30 @@ export function DeliveryModule() {
                         </div>
                         <div className="space-y-2">
                           <Label>Scheduled Time</Label>
-                          <Input type="datetime-local" />
+                          <Input 
+                            type="datetime-local" 
+                            value={scheduledDateTime}
+                            onChange={(e) => setScheduledDateTime(e.target.value)}
+                          />
                         </div>
                         <Button
-                          onClick={() => scheduleDelivery(enquiry.id, "customer-pickup", "2024-01-20 10:00")}
+                          onClick={() => {
+                            if (scheduledDateTime) {
+                              scheduleDelivery(enquiry.id, selectedDeliveryMethod, scheduledDateTime);
+                            } else {
+                              alert("Please select a scheduled time");
+                            }
+                          }}
                           className="w-full bg-gradient-primary hover:opacity-90"
+                          disabled={!scheduledDateTime}
                         >
                           Schedule Delivery
                         </Button>
+                        {!scheduledDateTime && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Please select a scheduled time
+                          </p>
+                        )}
                       </div>
                     </DialogContent>
                   </Dialog>

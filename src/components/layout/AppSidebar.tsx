@@ -10,7 +10,7 @@ import {
   Camera,
   Truck,
   CheckCircle,
-  Wrench
+  Calculator
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,7 +35,7 @@ const navigation = [
   { name: "CRM", icon: Users, id: "crm" },
   { name: "Pickup Management", icon: MapPin, id: "pickup" },
   { name: "Service Workflow", icon: Camera, id: "service" },
-  { name: "Work Done", icon: Wrench, id: "work-done" },
+  { name: "Billing & Invoice", icon: Calculator, id: "billing" },
   { name: "Delivery Management", icon: Truck, id: "delivery" },
   { name: "Completed Orders", icon: CheckCircle, id: "completed" },
   { name: "Inventory", icon: Package, id: "inventory" },

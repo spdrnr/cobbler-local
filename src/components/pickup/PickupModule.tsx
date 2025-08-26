@@ -27,7 +27,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Enquiry, PickupStatus, ServiceType } from "@/types";
-import { enquiriesStorage, workflowHelpers } from "@/utils/localStorage";
+import { enquiriesStorage, workflowHelpers, imageUploadHelper } from "@/utils/localStorage";
 
 export function PickupModule() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -149,14 +149,16 @@ export function PickupModule() {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setSelectedImage(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        alert('Failed to process image. Please try again.');
+      }
     }
   };
 
@@ -180,6 +182,10 @@ export function PickupModule() {
               collectionNotes: receivedNotes,
             },
             serviceDetails: {
+              overallPhotos: {
+                beforePhoto: selectedImage || undefined,
+                beforeNotes: receivedNotes,
+              },
               serviceTypes: [],
               estimatedCost: enquiry.quotedAmount || 0,
             },

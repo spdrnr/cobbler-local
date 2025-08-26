@@ -7,6 +7,22 @@ import {
   StaffMember 
 } from "@/types";
 
+// Dummy logo SVG for testing
+const dummyLogo = `data:image/svg+xml;base64,${btoa(`
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1D4ED8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="20" fill="url(#logoGradient)"/>
+  <circle cx="100" cy="80" r="25" fill="white" opacity="0.9"/>
+  <path d="M70 120 Q100 140 130 120" stroke="white" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <text x="100" y="170" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">RSR</text>
+</svg>
+`)}`;
+
 // Sample Enquiries Data - All starting in "enquiry" stage for workflow testing
 export const sampleEnquiries: Enquiry[] = [
   {
@@ -101,9 +117,9 @@ export const sampleEnquiries: Enquiry[] = [
     date: "2024-01-11",
     status: "converted",
     contacted: true,
-    contactedAt: "2024-01-11 4:15 PM",
+    contactedAt: "2024-01-11 11:00 AM",
     currentStage: "enquiry",
-    quotedAmount: 900,
+    quotedAmount: 750,
     // Legacy compatibility
     name: "Kavita Joshi",
     number: "5432109876",

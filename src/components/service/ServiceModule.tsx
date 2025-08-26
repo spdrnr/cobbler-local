@@ -8,9 +8,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Camera, CheckCircle, Clock, DollarSign, FileText, Image, Search, Upload, Send, ArrowRight, CheckSquare, Wrench } from "lucide-react";
+import { Camera, CheckCircle, Clock, DollarSign, FileText, Image, Search, Upload, Send, ArrowRight, CheckSquare, Wrench, Eye } from "lucide-react";
 import { Enquiry, ServiceStatus, ServiceType, ServiceTypeStatus } from "@/types";
-import { enquiriesStorage, workflowHelpers } from "@/utils/localStorage";
+import { enquiriesStorage, workflowHelpers, imageUploadHelper } from "@/utils/localStorage";
+import { ServiceTypeDetail } from "./ServiceTypeDetail";
 
 export function ServiceModule() {
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -20,6 +21,16 @@ export function ServiceModule() {
   const [actualCost, setActualCost] = useState<number>(0);
   const [selectedServiceTypes, setSelectedServiceTypes] = useState<ServiceType[]>([]);
   const [showServiceAssignment, setShowServiceAssignment] = useState<number | null>(null);
+  const [selectedServiceDetail, setSelectedServiceDetail] = useState<{ enquiryId: number; serviceType: ServiceType } | null>(null);
+  
+  // Overall photo management
+  const [overallBeforePhoto, setOverallBeforePhoto] = useState<string | null>(null);
+  const [overallAfterPhoto, setOverallAfterPhoto] = useState<string | null>(null);
+  const [showOverallPhotoDialog, setShowOverallPhotoDialog] = useState<number | null>(null);
+  const [showFinalPhotoDialog, setShowFinalPhotoDialog] = useState<number | null>(null);
+  const [overallPhotoNotes, setOverallPhotoNotes] = useState("");
+  const [finalPhotoNotes, setFinalPhotoNotes] = useState("");
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
 
   // Load service stage enquiries from localStorage on component mount and refresh periodically
   useEffect(() => {
@@ -89,14 +100,42 @@ export function ServiceModule() {
     }
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setSelectedImage(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setSelectedImage(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        alert('Failed to process image. Please try again.');
+      }
+    }
+  };
+
+  const handleOverallPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setOverallBeforePhoto(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        alert('Failed to process image. Please try again.');
+      }
+    }
+  };
+
+  const handleFinalPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      try {
+        const thumbnailData = await imageUploadHelper.handleImageUpload(file);
+        setOverallAfterPhoto(thumbnailData);
+      } catch (error) {
+        console.error('Failed to process image:', error);
+        alert('Failed to process image. Please try again.');
+      }
     }
   };
 
@@ -186,23 +225,37 @@ export function ServiceModule() {
   const serviceComplete = (enquiryId: number) => {
     const currentTime = new Date().toISOString();
     
-    // Check if all services are done
-    const enquiry = enquiries.find((e) => e.id === enquiryId);
-    if (!enquiry?.serviceDetails?.serviceTypes) return;
+    // Get the latest enquiry data from localStorage instead of stale state
+    const allEnquiries = enquiriesStorage.getAll();
+    const enquiry = allEnquiries.find((e) => e.id === enquiryId);
     
-    const allServicesDone = enquiry.serviceDetails.serviceTypes.every(service => service.status === "done");
-    if (!allServicesDone) {
-      alert("All services must be completed before moving to Work Done stage.");
+    if (!enquiry?.serviceDetails?.serviceTypes) {
+      console.log('No service details found for enquiry:', enquiryId);
       return;
     }
     
-    // Update enquiry to transition to work-done stage
-    const allEnquiries = enquiriesStorage.getAll();
+    const allServicesDone = enquiry.serviceDetails.serviceTypes.every(service => service.status === "done");
+    if (!allServicesDone) {
+      console.log('Not all services are done for enquiry:', enquiryId);
+      alert("All services must be completed before moving to Work Done stage.");
+      return;
+    }
+
+    // Check if final photo is taken using the latest data
+    if (!enquiry.serviceDetails.overallPhotos?.afterPhoto) {
+      console.log('No final photo found for enquiry:', enquiryId);
+      setShowFinalPhotoDialog(enquiryId);
+      return;
+    }
+    
+    console.log('All conditions met, transitioning to billing for enquiry:', enquiryId);
+    
+    // Update enquiry to transition to billing stage
     const updatedEnquiries = allEnquiries.map((enquiry) =>
       enquiry.id === enquiryId
         ? {
             ...enquiry,
-            currentStage: "work-done" as const,
+            currentStage: "billing" as const,
             serviceDetails: {
               ...enquiry.serviceDetails!,
               actualCost: actualCost || enquiry.serviceDetails?.estimatedCost || 0,
@@ -227,7 +280,7 @@ export function ServiceModule() {
     // Send WhatsApp notification
     if (enquiry) {
       alert(
-        `WhatsApp sent to ${enquiry.customerName}!\n"All services on your ${enquiry.product} have been completed and it's ready for delivery!"`
+        `WhatsApp sent to ${enquiry.customerName}!\n"All services on your ${enquiry.product} have been completed and it's ready for billing!"`
       );
     }
   };
@@ -255,6 +308,18 @@ export function ServiceModule() {
               serviceTypes: selectedServiceTypes.map(type => ({
                 type,
                 status: "pending" as const,
+                photos: {
+                  beforePhoto: undefined,
+                  afterPhoto: undefined,
+                  beforeNotes: undefined,
+                  afterNotes: undefined,
+                },
+                startedAt: undefined,
+                completedAt: undefined,
+                workNotes: undefined,
+                id: undefined,
+                createdAt: undefined,
+                updatedAt: undefined,
               }))
             },
           }
@@ -278,6 +343,112 @@ export function ServiceModule() {
         `WhatsApp sent to ${enquiry.customerName}!\n"Services have been assigned for your ${enquiry.product}."`
       );
     }
+  };
+
+  const updateOverallBeforePhoto = (enquiryId: number) => {
+    if (!overallBeforePhoto) return;
+
+    const allEnquiries = enquiriesStorage.getAll();
+    const updatedEnquiries = allEnquiries.map((enquiry) =>
+      enquiry.id === enquiryId
+        ? {
+            ...enquiry,
+            serviceDetails: {
+              ...enquiry.serviceDetails!,
+              overallPhotos: {
+                ...enquiry.serviceDetails!.overallPhotos,
+                beforePhoto: overallBeforePhoto,
+                beforeNotes: overallPhotoNotes,
+              },
+            },
+          }
+        : enquiry
+    );
+    
+    enquiriesStorage.save(updatedEnquiries);
+    
+    // Refresh service enquiries
+    const updatedServiceEnquiries = workflowHelpers.getServiceEnquiries();
+    setEnquiries(updatedServiceEnquiries);
+
+    // Reset form
+    setOverallBeforePhoto(null);
+    setOverallPhotoNotes("");
+    setShowOverallPhotoDialog(null);
+  };
+
+  const updateFinalPhoto = async (enquiryId: number) => {
+    if (!overallAfterPhoto || isProcessingPhoto) {
+      console.log('No final photo selected or already processing');
+      return;
+    }
+
+    setIsProcessingPhoto(true);
+    console.log('Updating final photo for enquiry:', enquiryId);
+    console.log('Final photo data length:', overallAfterPhoto.length);
+
+    try {
+      const allEnquiries = enquiriesStorage.getAll();
+      const updatedEnquiries = allEnquiries.map((enquiry) =>
+        enquiry.id === enquiryId
+          ? {
+              ...enquiry,
+              serviceDetails: {
+                ...enquiry.serviceDetails!,
+                overallPhotos: {
+                  ...enquiry.serviceDetails!.overallPhotos,
+                  afterPhoto: overallAfterPhoto,
+                  afterNotes: finalPhotoNotes,
+                },
+              },
+            }
+          : enquiry
+      );
+      
+      enquiriesStorage.save(updatedEnquiries);
+      
+      // Refresh service enquiries
+      const updatedServiceEnquiries = workflowHelpers.getServiceEnquiries();
+      setEnquiries(updatedServiceEnquiries);
+
+      // Reset form and close dialog immediately
+      setOverallAfterPhoto(null);
+      setFinalPhotoNotes("");
+      setShowFinalPhotoDialog(null);
+
+      console.log('Final photo updated successfully');
+      
+      // Show success message
+      const enquiry = updatedEnquiries.find(e => e.id === enquiryId);
+      if (enquiry) {
+        alert(`Final photo saved successfully for ${enquiry.customerName}'s ${enquiry.product}! You can now complete the service.`);
+      }
+      
+    } catch (error) {
+      console.error('Error updating final photo:', error);
+      alert('Error saving final photo. Please try again.');
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
+  // Reset photo states when dialog closes
+  const handleFinalPhotoDialogClose = () => {
+    console.log('Closing final photo dialog');
+    setShowFinalPhotoDialog(null);
+    setOverallAfterPhoto(null);
+    setFinalPhotoNotes("");
+    setIsProcessingPhoto(false);
+  };
+
+  // Handle final photo dialog open
+  const handleFinalPhotoDialogOpen = (enquiryId: number) => {
+    console.log('Opening final photo dialog for enquiry:', enquiryId);
+    // Reset any previous photo data
+    setOverallAfterPhoto(null);
+    setFinalPhotoNotes("");
+    setIsProcessingPhoto(false);
+    setShowFinalPhotoDialog(enquiryId);
   };
 
   const handleServiceTypeToggle = (serviceType: ServiceType) => {
@@ -308,6 +479,17 @@ export function ServiceModule() {
       return "Pending";
     }
   };
+
+  // Show service type detail view if selected
+  if (selectedServiceDetail) {
+    return (
+      <ServiceTypeDetail
+        enquiryId={selectedServiceDetail.enquiryId}
+        serviceType={selectedServiceDetail.serviceType}
+        onBack={() => setSelectedServiceDetail(null)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in p-2 sm:p-0">
@@ -450,26 +632,15 @@ export function ServiceModule() {
                           </Badge>
                         </div>
                         <div className="flex space-x-1">
-                          {service.status === "pending" && (
-                            <Button
-                              size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-xs"
-                              onClick={() => startService(enquiry.id, service.type, service.type.toLowerCase().replace(/\s+/g, '-'))}
-                            >
-                              <Clock className="h-3 w-3 mr-1" />
-                              Start
-                            </Button>
-                          )}
-                          {service.status === "in-progress" && (
-                            <Button
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700 text-xs"
-                              onClick={() => markServiceDone(enquiry.id, service.type)}
-                            >
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Done
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs"
+                            onClick={() => setSelectedServiceDetail({ enquiryId: enquiry.id, serviceType: service.type })}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View
+                          </Button>
                         </div>
                       </div>
                     ))
@@ -478,6 +649,43 @@ export function ServiceModule() {
                       No services assigned yet
                     </div>
                   )}
+                </div>
+
+                {/* Overall Photos */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-foreground">Overall Photos:</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Before Photo */}
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Before</p>
+                      {enquiry.serviceDetails?.overallPhotos?.beforePhoto ? (
+                        <img 
+                          src={enquiry.serviceDetails.overallPhotos.beforePhoto} 
+                          alt="Before service" 
+                          className="h-20 w-full object-cover rounded border"
+                        />
+                      ) : (
+                        <div className="h-20 bg-muted rounded flex items-center justify-center border">
+                          <span className="text-xs text-muted-foreground">No before photo</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* After Photo */}
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1">After</p>
+                      {enquiry.serviceDetails?.overallPhotos?.afterPhoto ? (
+                        <img 
+                          src={enquiry.serviceDetails.overallPhotos.afterPhoto} 
+                          alt="After service" 
+                          className="h-20 w-full object-cover rounded border"
+                        />
+                      ) : (
+                        <div className="h-20 bg-muted rounded flex items-center justify-center border">
+                          <span className="text-xs text-muted-foreground">No after photo</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -504,14 +712,42 @@ export function ServiceModule() {
                 )}
 
                 {enquiry.serviceDetails?.serviceTypes && enquiry.serviceDetails.serviceTypes.length > 0 && 
-                 enquiry.serviceDetails.serviceTypes.every(service => service.status === "done") && (
+                 !enquiry.serviceDetails.overallPhotos?.beforePhoto && (
+                  <Button
+                    size="sm"
+                    className="bg-orange-600 hover:bg-orange-700 text-xs sm:text-sm"
+                    onClick={() => setShowOverallPhotoDialog(enquiry.id)}
+                  >
+                    <Camera className="h-3 w-3 mr-1" />
+                    Take Overall Before Photo
+                  </Button>
+                )}
+
+                {enquiry.serviceDetails?.serviceTypes && enquiry.serviceDetails.serviceTypes.length > 0 && 
+                 enquiry.serviceDetails.serviceTypes.every(service => service.status === "done") && 
+                 enquiry.serviceDetails.overallPhotos?.beforePhoto && 
+                 !enquiry.serviceDetails.overallPhotos?.afterPhoto && (
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm"
+                    onClick={() => handleFinalPhotoDialogOpen(enquiry.id)}
+                  >
+                    <Camera className="h-3 w-3 mr-1" />
+                    Take Final Photo
+                  </Button>
+                )}
+
+                {enquiry.serviceDetails?.serviceTypes && enquiry.serviceDetails.serviceTypes.length > 0 && 
+                 enquiry.serviceDetails.serviceTypes.every(service => service.status === "done") && 
+                 enquiry.serviceDetails.overallPhotos?.beforePhoto && 
+                 enquiry.serviceDetails.overallPhotos?.afterPhoto && (
                   <Button
                     size="sm"
                     className="bg-green-600 hover:bg-green-700 text-xs sm:text-sm"
                     onClick={() => serviceComplete(enquiry.id)}
                   >
                     <ArrowRight className="h-3 w-3 mr-1" />
-                    All Services Complete - Send to Work Done
+                    All Services Complete - Send to Billing
                   </Button>
                 )}
               </div>
@@ -552,6 +788,140 @@ export function ServiceModule() {
                         <Button
                           variant="outline"
                           onClick={() => setShowServiceAssignment(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              {/* Overall Before Photo Dialog */}
+              {showOverallPhotoDialog === enquiry.id && (
+                <Dialog open={showOverallPhotoDialog === enquiry.id} onOpenChange={() => setShowOverallPhotoDialog(null)}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Take Overall Before Photo</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Overall Before Photo</Label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleOverallPhotoUpload}
+                            className="hidden"
+                            id={`overall-before-photo-${enquiry.id}`}
+                          />
+                          <Label
+                            htmlFor={`overall-before-photo-${enquiry.id}`}
+                            className="cursor-pointer flex items-center justify-center space-x-2 border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground rounded-md flex-1"
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span>Take Photo</span>
+                          </Label>
+                        </div>
+                        {overallBeforePhoto && (
+                          <div className="mt-2">
+                            <img
+                              src={overallBeforePhoto}
+                              alt="Overall before photo"
+                              className="w-full h-32 object-cover rounded-md border"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="overall-notes">Notes (Optional)</Label>
+                        <Textarea
+                          id="overall-notes"
+                          placeholder="Add notes about the overall condition..."
+                          value={overallPhotoNotes}
+                          onChange={(e) => setOverallPhotoNotes(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => updateOverallBeforePhoto(enquiry.id)}
+                          className="flex-1 bg-blue-600 hover:bg-blue-700"
+                          disabled={!overallBeforePhoto}
+                        >
+                          <Camera className="h-4 w-4 mr-2" />
+                          Save Photo
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setShowOverallPhotoDialog(null)}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              {/* Final Photo Dialog */}
+              {showFinalPhotoDialog === enquiry.id && (
+                <Dialog open={showFinalPhotoDialog === enquiry.id} onOpenChange={handleFinalPhotoDialogClose}>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Take Final Photo</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Final After Photo (Required)</Label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFinalPhotoUpload}
+                            className="hidden"
+                            id={`final-photo-${enquiry.id}`}
+                          />
+                          <Label
+                            htmlFor={`final-photo-${enquiry.id}`}
+                            className="cursor-pointer flex items-center justify-center space-x-2 border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground rounded-md flex-1"
+                          >
+                            <Camera className="h-4 w-4" />
+                            <span>Take Final Photo</span>
+                          </Label>
+                        </div>
+                        {overallAfterPhoto && (
+                          <div className="mt-2">
+                            <img
+                              src={overallAfterPhoto}
+                              alt="Final after photo"
+                              className="w-full h-32 object-cover rounded-md border"
+                            />
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="final-notes">Final Notes (Optional)</Label>
+                        <Textarea
+                          id="final-notes"
+                          placeholder="Add final notes about the completed work..."
+                          value={finalPhotoNotes}
+                          onChange={(e) => setFinalPhotoNotes(e.target.value)}
+                          rows={3}
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() => updateFinalPhoto(enquiry.id)}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          disabled={!overallAfterPhoto || isProcessingPhoto}
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          {isProcessingPhoto ? 'Processing...' : 'Save Final Photo'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={handleFinalPhotoDialogClose}
                         >
                           Cancel
                         </Button>

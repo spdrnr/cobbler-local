@@ -32,22 +32,88 @@ export interface PickupStage {
 export interface ServiceTypeStatus {
   type: ServiceType;
   status: ServiceStatus;
+  
+  // Photos for this specific service
+  photos: {
+    beforePhoto?: string;
+    afterPhoto?: string;
+    beforeNotes?: string;
+    afterNotes?: string;
+  };
+  
+  // Work details
   department?: string;
   assignedTo?: string;
-  notes?: string;
   startedAt?: string;
   completedAt?: string;
-  photos?: StagePhotos;
+  workNotes?: string;
+  
+  // Backend-ready fields
+  id?: string; // For backend reference
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Business information types
+export interface BusinessInfo {
+  businessName: string;
+  ownerName: string;
+  phone: string;
+  email: string;
+  address: string;
+  gstNumber: string;
+  timezone: string;
+  currency: string;
+  logo?: string; // Base64 encoded logo
+  website?: string;
+  tagline?: string;
+}
+
+// Billing and invoice types
+export interface BillingDetails {
+  finalAmount: number;
+  gstIncluded: boolean;
+  gstRate: number; // Percentage (e.g., 18 for 18%)
+  gstAmount: number;
+  subtotal: number;
+  totalAmount: number;
+  invoiceNumber?: string;
+  invoiceDate?: string;
+  customerName: string;
+  customerPhone: string;
+  customerAddress: string;
+  businessInfo?: BusinessInfo; // Include business info in billing
+  items: BillingItem[];
+  notes?: string;
+  generatedAt?: string;
+}
+
+export interface BillingItem {
+  serviceType: string;
+  originalAmount: number;
+  discountValue: number; // Percentage discount only
+  discountAmount: number;
+  finalAmount: number;
+  gstRate: number; // Individual GST rate per service
+  gstAmount: number; // Individual GST amount per service
+  description?: string;
 }
 
 // Service stage details  
 export interface ServiceStage {
+  overallPhotos: {
+    beforePhoto?: string; // Pickup received photo
+    afterPhoto?: string;  // Before work-done photo
+    beforeNotes?: string;
+    afterNotes?: string;
+  };
   serviceTypes: ServiceTypeStatus[];
   estimatedCost?: number;
   actualCost?: number;
   workNotes?: string;
   workHistory?: WorkHistoryEntry[];
   completedAt?: string;
+  billingDetails?: BillingDetails; // Add billing details to service stage
 }
 
 // Delivery stage details
@@ -178,7 +244,7 @@ export type ProductType = "Bag" | "Shoe" | "Wallet" | "Belt" | "All type furnitu
 export type EnquiryStatus = "new" | "contacted" | "converted" | "closed" | "lost";
 
 // Workflow stages
-export type WorkflowStage = "enquiry" | "pickup" | "service" | "work-done" | "delivery" | "completed";
+export type WorkflowStage = "enquiry" | "pickup" | "service" | "billing" | "delivery" | "completed";
 
 // Stage-specific statuses
 export type PickupStatus = "scheduled" | "assigned" | "collected" | "received";
