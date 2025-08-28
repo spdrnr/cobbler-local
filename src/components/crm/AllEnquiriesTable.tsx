@@ -8,9 +8,6 @@ import { Enquiry } from "@/types";
 import { enquiriesStorage } from "@/utils/localStorage";
 
 
-
-
-
 interface AllEnquiriesTableProps {
   onBack: () => void;
 }

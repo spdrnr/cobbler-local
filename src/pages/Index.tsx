@@ -139,7 +139,7 @@ import { ServiceModule } from "@/components/service/ServiceModule";
 import { BillingModule } from "@/components/billing/BillingModule";
 import { DeliveryModule } from "@/components/delivery/DeliveryModule";
 import { CompletedModule } from "@/components/completed/CompletedModule";
-import { ReportsModule } from "@/components/reports/ReportsModule";
+import  ReportsModule  from "@/components/reports/ReportsModule";
 import { SettingsModule } from "@/components/settings/SettingsModule";
 import { AllEnquiriesTable } from "@/components/crm/AllEnquiriesTable";
 import { PendingPickupsTable } from "@/components/pickup/PendingPickupsTable";

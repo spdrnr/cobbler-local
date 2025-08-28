@@ -1,316 +1,3 @@
-// import { useState } from "react";
-// import { Card } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Label } from "@/components/ui/label";
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-// import { Textarea } from "@/components/ui/textarea";
-// import { Badge } from "@/components/ui/badge";
-// import { Plus, Search, Calendar, TrendingUp, Receipt, DollarSign } from "lucide-react";
-
-// interface Expense {
-//   id: number;
-//   date: string;
-//   amount: number;
-//   category: string;
-//   description: string;
-//   notes?: string;
-// }
-
-// const expenseCategories = [
-//   "Materials",
-//   "Tools",
-//   "Rent",
-//   "Utilities",
-//   "Transportation",
-//   "Marketing",
-//   "Miscellaneous"
-// ];
-
-// const sampleExpenses: Expense[] = [
-//   {
-//     id: 1,
-//     date: "2024-01-15",
-//     amount: 2500,
-//     category: "Materials",
-//     description: "Leather sheets and polish",
-//     notes: "Bulk purchase for January"
-//   },
-//   {
-//     id: 2,
-//     date: "2024-01-14",
-//     amount: 800,
-//     category: "Tools",
-//     description: "New stitching machine needles",
-//   },
-//   {
-//     id: 3,
-//     date: "2024-01-13",
-//     amount: 1200,
-//     category: "Rent",
-//     description: "Shop rent for January",
-//   },
-//   {
-//     id: 4,
-//     date: "2024-01-12",
-//     amount: 300,
-//     category: "Transportation",
-//     description: "Fuel for pickup deliveries",
-//   }
-// ];
-
-// export function ExpenseModule() {
-//   const [expenses, setExpenses] = useState<Expense[]>(sampleExpenses);
-//   const [showForm, setShowForm] = useState(false);
-//   const [searchTerm, setSearchTerm] = useState("");
-//   const [selectedMonth, setSelectedMonth] = useState("2024-01");
-//   const [formData, setFormData] = useState({
-//     date: "",
-//     amount: "",
-//     category: "",
-//     description: "",
-//     notes: ""
-//   });
-
-//   const handleSubmit = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     const newExpense: Expense = {
-//       id: expenses.length + 1,
-//       ...formData,
-//       amount: parseFloat(formData.amount),
-//     };
-//     setExpenses([newExpense, ...expenses]);
-//     setFormData({ date: "", amount: "", category: "", description: "", notes: "" });
-//     setShowForm(false);
-//   };
-
-//   const filteredExpenses = expenses.filter(expense => {
-//     const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//                          expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-//     const matchesMonth = expense.date.startsWith(selectedMonth);
-//     return matchesSearch && matchesMonth;
-//   });
-
-//   const monthlyTotal = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  
-//   const categoryTotals = expenseCategories.map(category => ({
-//     category,
-//     amount: filteredExpenses
-//       .filter(expense => expense.category === category)
-//       .reduce((sum, expense) => sum + expense.amount, 0)
-//   })).filter(item => item.amount > 0);
-
-//   const getCategoryColor = (category: string) => {
-//     const colors = {
-//       "Materials": "bg-blue-500",
-//       "Tools": "bg-green-500",
-//       "Rent": "bg-purple-500",
-//       "Utilities": "bg-yellow-500",
-//       "Transportation": "bg-red-500",
-//       "Marketing": "bg-pink-500",
-//       "Miscellaneous": "bg-gray-500"
-//     };
-//     return colors[category as keyof typeof colors] || "bg-gray-500";
-//   };
-
-//   return (
-//     <div className="space-y-6 animate-fade-in">
-//       {/* Header */}
-//       <div className="flex items-center justify-between">
-//         <div>
-//           <h1 className="text-3xl font-bold text-foreground">Expense Management</h1>
-//           <p className="text-muted-foreground">Track and manage business expenses</p>
-//         </div>
-//         <Button onClick={() => setShowForm(!showForm)} className="bg-gradient-primary hover:opacity-90">
-//           <Plus className="h-4 w-4 mr-0" />
-//           Add Expense
-//         </Button>
-//       </div>
-
-//       {/* Stats */}
-//       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-//         <Card className="p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-2xl font-bold text-foreground">₹{monthlyTotal.toLocaleString()}</div>
-//               <div className="text-sm text-muted-foreground">Monthly Total</div>
-//             </div>
-//             <DollarSign className="h-8 w-8 text-primary" />
-//           </div>
-//         </Card>
-//         <Card className="p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-2xl font-bold text-foreground">{filteredExpenses.length}</div>
-//               <div className="text-sm text-muted-foreground">Total Entries</div>
-//             </div>
-//             <Receipt className="h-8 w-8 text-primary" />
-//           </div>
-//         </Card>
-//         <Card className="p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-2xl font-bold text-foreground">₹{Math.round(monthlyTotal / (filteredExpenses.length || 1)).toLocaleString()}</div>
-//               <div className="text-sm text-muted-foreground">Average Expense</div>
-//             </div>
-//             <TrendingUp className="h-8 w-8 text-primary" />
-//           </div>
-//         </Card>
-//         <Card className="p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-2xl font-bold text-foreground">{categoryTotals.length}</div>
-//               <div className="text-sm text-muted-foreground">Categories Used</div>
-//             </div>
-//             <Calendar className="h-8 w-8 text-primary" />
-//           </div>
-//         </Card>
-//       </div>
-
-//       {/* Category Breakdown */}
-//       <Card className="p-6 bg-gradient-card border-0 shadow-soft">
-//         <h3 className="text-lg font-semibold text-foreground mb-4">Category Breakdown</h3>
-//         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-//           {categoryTotals.map((item) => (
-//             <div key={item.category} className="flex items-center space-x-3">
-//               <div className={`w-4 h-4 rounded-full ${getCategoryColor(item.category)}`} />
-//               <div className="flex-1">
-//                 <div className="text-sm font-medium text-foreground">{item.category}</div>
-//                 <div className="text-lg font-bold text-foreground">₹{item.amount.toLocaleString()}</div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </Card>
-
-//       {/* Add Expense Form */}
-//       {showForm && (
-//         <Card className="p-6 bg-gradient-card border-0 shadow-medium">
-//           <h3 className="text-lg font-semibold text-foreground mb-4">Add New Expense</h3>
-//           <form onSubmit={handleSubmit} className="space-y-4">
-//             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-//               <div>
-//                 <Label htmlFor="date">Date</Label>
-//                 <Input
-//                   id="date"
-//                   type="date"
-//                   value={formData.date}
-//                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-//                   required
-//                 />
-//               </div>
-//               <div>
-//                 <Label htmlFor="amount">Amount (₹)</Label>
-//                 <Input
-//                   id="amount"
-//                   type="number"
-//                   value={formData.amount}
-//                   onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-//                   required
-//                 />
-//               </div>
-//               <div>
-//                 <Label htmlFor="category">Category</Label>
-//                 <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-//                   <SelectTrigger>
-//                     <SelectValue placeholder="Select category" />
-//                   </SelectTrigger>
-//                   <SelectContent>
-//                     {expenseCategories.map((category) => (
-//                       <SelectItem key={category} value={category}>{category}</SelectItem>
-//                     ))}
-//                   </SelectContent>
-//                 </Select>
-//               </div>
-//             </div>
-//             <div>
-//               <Label htmlFor="description">Description</Label>
-//               <Input
-//                 id="description"
-//                 value={formData.description}
-//                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-//                 placeholder="Brief description of the expense"
-//                 required
-//               />
-//             </div>
-//             <div>
-//               <Label htmlFor="notes">Notes (Optional)</Label>
-//               <Textarea
-//                 id="notes"
-//                 value={formData.notes}
-//                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-//                 placeholder="Additional notes..."
-//               />
-//             </div>
-//             <div className="flex space-x-2">
-//               <Button type="submit" className="bg-gradient-primary hover:opacity-90">
-//                 Save Expense
-//               </Button>
-//               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
-//                 Cancel
-//               </Button>
-//             </div>
-//           </form>
-//         </Card>
-//       )}
-
-//       {/* Filters */}
-//       <Card className="p-4 bg-gradient-card border-0 shadow-soft">
-//         <div className="flex items-center space-x-4">
-//           <div className="relative flex-1">
-//             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-//             <Input
-//               placeholder="Search expenses..."
-//               value={searchTerm}
-//               onChange={(e) => setSearchTerm(e.target.value)}
-//               className="pl-10"
-//             />
-//           </div>
-//           <div className="w-48">
-//             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-//               <SelectTrigger>
-//                 <SelectValue />
-//               </SelectTrigger>
-//               <SelectContent>
-//                 <SelectItem value="2024-01">January 2024</SelectItem>
-//                 <SelectItem value="2023-12">December 2023</SelectItem>
-//                 <SelectItem value="2023-11">November 2023</SelectItem>
-//               </SelectContent>
-//             </Select>
-//           </div>
-//         </div>
-//       </Card>
-
-//       {/* Expenses List */}
-//       <div className="space-y-4">
-//         {filteredExpenses.map((expense) => (
-//           <Card key={expense.id} className="p-6 bg-gradient-card border-0 shadow-soft hover:shadow-medium transition-all duration-300">
-//             <div className="flex items-start justify-between">
-//               <div className="flex-1">
-//                 <div className="flex items-center space-x-3 mb-2">
-//                   <h3 className="font-semibold text-foreground">{expense.description}</h3>
-//                   <Badge variant="outline">{expense.category}</Badge>
-//                   <span className="text-sm text-muted-foreground">{expense.date}</span>
-//                 </div>
-//                 {expense.notes && (
-//                   <p className="text-sm text-muted-foreground">{expense.notes}</p>
-//                 )}
-//               </div>
-//               <div className="text-right">
-//                 <div className="text-2xl font-bold text-foreground">₹{expense.amount.toLocaleString()}</div>
-//                 <div className="flex space-x-2 mt-2">
-//                   <Button size="sm" variant="outline">Edit</Button>
-//                   <Button size="sm" variant="outline">Delete</Button>
-//                 </div>
-//               </div>
-//             </div>
-//           </Card>
-//         ))}
-//       </div>
-//     </div>
-//   );
-// }
-
 import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -352,8 +39,12 @@ import {
   AlertTriangle,
   Eye,
   Menu,
+  FileText,
+  FileUp,
+  Wallet,
+  Filter,
 } from "lucide-react";
-import GradientText from "../ui/GradientText";
+
 
 interface Expense {
   id: string;
@@ -363,6 +54,7 @@ interface Expense {
   date: string;
   notes?: string;
   billImage?: string;
+  billFileName?: string;
   createdAt: string;
   updatedAt: string;
   employeeId?: string;
@@ -376,7 +68,14 @@ interface Employee {
   dateAdded: string;
 }
 
-const expenseCategories = [ "Materials", "Tools", "Others"];
+const expenseCategories = [
+  "Materials",
+  "Tools",
+  "Rent",
+  "Utilities",
+  "Marketing",
+  "Others",
+];
 
 // Enhanced storage system with localStorage integration
 class StorageManager {
@@ -521,7 +220,7 @@ export default function ExpenseManagementSystem() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(
     null
   );
-  const [showImageModal, setShowImageModal] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState<Expense | null>(null);
 
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
@@ -559,6 +258,7 @@ export default function ExpenseManagementSystem() {
     date: getTodayDate(),
     notes: "",
     billImage: "",
+    billFileName: "",
   });
 
   const [salaryFormData, setSalaryFormData] = useState({
@@ -634,6 +334,7 @@ export default function ExpenseManagementSystem() {
           date: expenseFormData.date,
           notes: expenseFormData.notes.trim(),
           billImage: expenseFormData.billImage,
+          billFileName: expenseFormData.billFileName,
           updatedAt: now,
         };
 
@@ -669,6 +370,7 @@ export default function ExpenseManagementSystem() {
           date: expenseFormData.date,
           notes: expenseFormData.notes.trim(),
           billImage: expenseFormData.billImage,
+          billFileName: expenseFormData.billFileName,
           createdAt: now,
           updatedAt: now,
         };
@@ -744,6 +446,7 @@ export default function ExpenseManagementSystem() {
       date: getTodayDate(),
       notes: "",
       billImage: "",
+      billFileName: "",
     });
     setShowExpenseForm(false);
     setEditingExpense(null);
@@ -767,6 +470,7 @@ export default function ExpenseManagementSystem() {
       date: expense.date,
       notes: expense.notes || "",
       billImage: expense.billImage || "",
+      billFileName: expense.billFileName || "",
     });
     setEditingExpense(expense);
     setShowExpenseForm(true);
@@ -800,7 +504,11 @@ export default function ExpenseManagementSystem() {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        setExpenseFormData({ ...expenseFormData, billImage: result });
+        setExpenseFormData({
+          ...expenseFormData,
+          billImage: result,
+          billFileName: file.name,
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -852,13 +560,17 @@ export default function ExpenseManagementSystem() {
     .filter((item) => item.amount > 0);
 
   const getCategoryColor = (category: string) => {
-    const colors = {
+    const colors: { [key: string]: string } = {
       Salary: "bg-indigo-500",
       Materials: "bg-blue-500",
       Tools: "bg-green-500",
+      Rent: "bg-purple-500",
+      Utilities: "bg-yellow-500",
+      Marketing: "bg-pink-500",
+      Travel: "bg-teal-500",
       Others: "bg-gray-500",
     };
-    return colors[category as keyof typeof colors] || "bg-gray-500";
+    return colors[category] || "bg-gray-500";
   };
 
   // Get available months from actual data
@@ -911,14 +623,7 @@ export default function ExpenseManagementSystem() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl lg:text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-              <GradientText
-                colors={["#00cc77", "#0044cc", "#00cc77", "#0044cc", "#00cc77"]}
-                animationSpeed={3}
-                showBorder={false}
-                className="custom-class"
-              >
-                Expense Management System
-              </GradientText>
+                Expense Management System              
             </h1>
             <p className="text-slate-600 mt-1 sm:mt-2 text-sm sm:text-base">
               Comprehensive expense tracking and management
@@ -957,7 +662,7 @@ export default function ExpenseManagementSystem() {
                 </div>
               </div>
               <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full">
-                <DollarSign className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
+                <Wallet className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
               </div>
             </div>
           </Card>
@@ -975,7 +680,7 @@ export default function ExpenseManagementSystem() {
                 </div>
               </div>
               <div className="p-2 sm:p-3 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full">
-                <Receipt className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
+                <Filter className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
               </div>
             </div>
           </Card>
@@ -1008,7 +713,7 @@ export default function ExpenseManagementSystem() {
                   {categoryTotals.length}
                 </div>
                 <div className="text-xs sm:text-sm text-slate-600 font-medium">
-                  Active Categories
+                   Categories
                 </div>
               </div>
               <div className="p-2 sm:p-3 bg-gradient-to-br from-orange-500 to-red-500 rounded-full">
@@ -1177,38 +882,70 @@ export default function ExpenseManagementSystem() {
                 <div>
                   <Label
                     htmlFor="expenseBillImage"
-                    className="text-slate-700 font-medium text-sm"
+                    className="text-slate-700 font-medium text-sm mb-1 block"
                   >
-                    Upload Bill Image
+                    Upload Bill
                   </Label>
-                  <div className="mt-1 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                  <div
+                    className="mt-1 flex justify-center rounded-lg border border-dashed border-slate-900/25 px-6 py-10 bg-white hover:bg-slate-50 transition-colors cursor-pointer"
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleImageUpload({
+                        target: { files: e.dataTransfer.files },
+                      } as React.ChangeEvent<HTMLInputElement>);
+                    }}
+                    onDragOver={(e) => e.preventDefault()}
+                    onClick={() =>
+                      document.getElementById("expenseBillImage")?.click()
+                    }
+                  >
+                    <div className="text-center">
+                      <FileUp
+                        className="mx-auto h-12 w-12 text-slate-400"
+                        aria-hidden="true"
+                      />
+                      <div className="mt-4 flex text-sm leading-6 text-slate-600">
+                        <p className="pl-1">
+                          Drag and drop, or click to upload
+                        </p>
+                      </div>
+                      <p className="text-xs leading-5 text-slate-500">
+                        PNG, JPG, PDF up to 5MB
+                      </p>
+                    </div>
                     <Input
                       id="expenseBillImage"
                       type="file"
                       accept="image/*,.pdf"
                       onChange={handleImageUpload}
-                      className="border-slate-300 focus:border-blue-500 flex-1 text-sm"
+                      className="sr-only"
                     />
-                    {expenseFormData.billImage && (
+                  </div>
+                  {expenseFormData.billFileName && (
+                    <div className="mt-2 flex items-center justify-between bg-slate-100 p-2 rounded-md">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-slate-600" />
+                        <span className="text-sm text-slate-800 font-medium truncate">
+                          {expenseFormData.billFileName}
+                        </span>
+                      </div>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="ghost"
                         size="icon"
                         onClick={() =>
                           setExpenseFormData({
                             ...expenseFormData,
                             billImage: "",
+                            billFileName: "",
                           })
                         }
-                        className="text-red-600 border-red-300 hover:bg-red-50 h-9 w-9"
+                        className="text-red-600 hover:bg-red-100 h-7 w-7"
                       >
                         <X className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Supports JPG, PNG, PDF (max 5MB)
-                  </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1280,7 +1017,7 @@ export default function ExpenseManagementSystem() {
                       type="text"
                       value={salaryFormData.name}
                       onChange={(e) => {
-                        // Allow only letters and single spaces
+                        // Allow only letters and spaces
                         let value = e.target.value.replace(/[^a-zA-Z\s]/g, ""); // remove non-letters
                         value = value.replace(/\s{2,}/g, " "); // collapse multiple spaces into one
                         setSalaryFormData({ ...salaryFormData, name: value });
@@ -1452,29 +1189,66 @@ export default function ExpenseManagementSystem() {
 
         {/* Image Modal */}
         {showImageModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-3 sm:p-4 max-w-4xl max-h-[90vh] overflow-auto w-full">
-              <div className="flex justify-between items-center mb-3 sm:mb-4">
-                <h3 className="text-lg font-semibold">Bill Image</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowImageModal(null)}
-                  className="text-slate-600"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+          <AlertDialog
+            open={!!showImageModal}
+            onOpenChange={(open) => !open && setShowImageModal(null)}
+          >
+            <AlertDialogContent className="max-w-3xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
+                  Bill for: {showImageModal?.title}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Date: {showImageModal?.date} | Amount: ₹
+                  {showImageModal?.amount.toLocaleString("en-IN")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <div className="mt-4 max-h-[70vh] overflow-auto flex justify-center items-center bg-slate-100 rounded-md p-4">
+                {showImageModal?.billImage &&
+                showImageModal.billImage.startsWith("data:image") ? (
+                  <img
+                    src={showImageModal.billImage}
+                    alt="Bill Preview"
+                    className="max-w-full h-auto rounded-md"
+                  />
+                ) : showImageModal?.billImage &&
+                  showImageModal.billImage.startsWith("data:application/pdf") ? (
+                  <div className="text-center p-10">
+                    <FileText className="h-24 w-24 mx-auto text-slate-500" />
+                    <p className="mt-4 font-semibold text-slate-800">
+                      PDF File: {showImageModal.billFileName}
+                    </p>
+                    <p className="text-sm text-slate-600">
+                      PDF preview is not available. You can download the file to
+                      view it.
+                    </p>
+                    <a
+                      href={showImageModal.billImage}
+                      download={showImageModal.billFileName}
+                      className="mt-6 inline-block bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Download PDF
+                    </a>
+                  </div>
+                ) : (
+                  <div className="text-center p-10">
+                    <AlertTriangle className="h-24 w-24 mx-auto text-yellow-500" />
+                    <p className="mt-4 font-semibold text-slate-800">
+                      No bill image available or format not supported.
+                    </p>
+                  </div>
+                )}
               </div>
-              <img
-                src={showImageModal}
-                alt="Bill"
-                className="max-w-full h-auto rounded-lg shadow-lg"
-              />
-            </div>
-          </div>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setShowImageModal(null)}>
+                  Close
+                </AlertDialogCancel>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
 
-        {/* Expenses List */}
+        {/* Main Content */}
         <div className="space-y-3 sm:space-y-4">
           {filteredExpenses.length === 0 ? (
             <Card className="p-8 sm:p-12 bg-gradient-to-br from-white to-slate-50 border-0 shadow-lg text-center">
@@ -1530,7 +1304,7 @@ export default function ExpenseManagementSystem() {
                             variant="outline"
                             size="sm"
                             onClick={() =>
-                              setShowImageModal(expense.billImage!)
+                              setShowImageModal(expense)
                             }
                             className="ml-2 h-6 px-2 text-xs"
                           >
@@ -1652,7 +1426,7 @@ export default function ExpenseManagementSystem() {
                 {filteredExpenses.length}
               </span>{" "}
               expenses worth{" "}
-              <span className="font-bold text-white">
+              <span className="font-bold mr-2 text-white">
                 ₹{monthlyTotal.toLocaleString("en-IN")}
               </span>
               across{" "}

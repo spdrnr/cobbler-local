@@ -1,220 +1,3 @@
-// import { useState } from "react";
-// import { Card } from "@/components/ui/card";
-// import { Button } from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Badge } from "@/components/ui/badge";
-// import { Plus, Search, AlertTriangle, Package, TrendingDown } from "lucide-react";
-
-// interface InventoryItem {
-//   id: number;
-//   name: string;
-//   category: string;
-//   quantity: number;
-//   minStock: number;
-//   unit: string;
-//   lastUpdated: string;
-// }
-
-// const sampleInventory: InventoryItem[] = [
-//   {
-//     id: 1,
-//     name: "Leather Polish - Brown",
-//     category: "Polish",
-//     quantity: 15,
-//     minStock: 10,
-//     unit: "bottles",
-//     lastUpdated: "2024-01-15"
-//   },
-//   {
-//     id: 2,
-//     name: "Shoe Sole - Rubber",
-//     category: "Soles",
-//     quantity: 3,
-//     minStock: 5,
-//     unit: "pairs",
-//     lastUpdated: "2024-01-14"
-//   },
-//   {
-//     id: 3,
-//     name: "Thread - Heavy Duty",
-//     category: "Thread",
-//     quantity: 8,
-//     minStock: 3,
-//     unit: "spools",
-//     lastUpdated: "2024-01-13"
-//   },
-//   {
-//     id: 4,
-//     name: "Bag Zipper - Metal",
-//     category: "Hardware",
-//     quantity: 25,
-//     minStock: 15,
-//     unit: "pieces",
-//     lastUpdated: "2024-01-12"
-//   }
-// ];
-
-// export function InventoryModule() {
-//   const [inventory, setInventory] = useState<InventoryItem[]>(sampleInventory);
-//   const [searchTerm, setSearchTerm] = useState("");
-
-//   const lowStockItems = inventory.filter(item => item.quantity <= item.minStock);
-//   const totalItems = inventory.reduce((sum, item) => sum + item.quantity, 0);
-
-//   const filteredInventory = inventory.filter(item =>
-//     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     item.category.toLowerCase().includes(searchTerm.toLowerCase())
-//   );
-
-//   const getStockStatus = (item: InventoryItem) => {
-//     if (item.quantity <= item.minStock) {
-//       return { status: "Low Stock", color: "bg-destructive text-destructive-foreground" };
-//     }
-//     if (item.quantity <= item.minStock * 1.5) {
-//       return { status: "Medium", color: "bg-warning text-warning-foreground" };
-//     }
-//     return { status: "Good", color: "bg-success text-success-foreground" };
-//   };
-
-//   return (
-//     <div className="space-y-4 sm:space-y-6 animate-fade-in p-2 sm:p-0">
-//       {/* Header */}
-//       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-//         <div>
-//           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Inventory Management</h1>
-//           <p className="text-sm sm:text-base text-muted-foreground">Track materials and stock levels</p>
-//         </div>
-//         <Button className="bg-gradient-primary hover:opacity-90 w-full sm:w-auto">
-//           <Plus className="h-4 w-4 mr-0" />
-//           Add Item
-//         </Button>
-//       </div>
-
-//       {/* Stats */}
-//       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-//         <Card className="p-3 sm:p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-lg sm:text-2xl font-bold text-foreground">{inventory.length}</div>
-//               <div className="text-xs sm:text-sm text-muted-foreground">Total Items</div>
-//             </div>
-//             <Package className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-//           </div>
-//         </Card>
-//         <Card className="p-3 sm:p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-lg sm:text-2xl font-bold text-foreground">{totalItems}</div>
-//               <div className="text-xs sm:text-sm text-muted-foreground">Total Quantity</div>
-//             </div>
-//             <TrendingDown className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-//           </div>
-//         </Card>
-//         <Card className="p-3 sm:p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-lg sm:text-2xl font-bold text-destructive">{lowStockItems.length}</div>
-//               <div className="text-xs sm:text-sm text-muted-foreground">Low Stock Alerts</div>
-//             </div>
-//             <AlertTriangle className="h-6 w-6 sm:h-8 sm:w-8 text-destructive" />
-//           </div>
-//         </Card>
-//         <Card className="p-3 sm:p-4 bg-gradient-card border-0 shadow-soft">
-//           <div className="flex items-center justify-between">
-//             <div>
-//               <div className="text-lg sm:text-2xl font-bold text-success">{inventory.length - lowStockItems.length}</div>
-//               <div className="text-xs sm:text-sm text-muted-foreground">Well Stocked</div>
-//             </div>
-//             <Package className="h-6 w-6 sm:h-8 sm:w-8 text-success" />
-//           </div>
-//         </Card>
-//       </div>
-
-//       {/* Low Stock Alerts */}
-//       {lowStockItems.length > 0 && (
-//         <Card className="p-3 sm:p-4 bg-destructive/5 border border-destructive/20">
-//           <div className="flex items-center space-x-2 mb-3">
-//             <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
-//             <h3 className="font-semibold text-destructive text-sm sm:text-base">Low Stock Alerts</h3>
-//           </div>
-//           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-//             {lowStockItems.map((item) => (
-//               <div key={item.id} className="text-xs sm:text-sm text-foreground">
-//                 <span className="font-medium">{item.name}</span> - Only {item.quantity} {item.unit} left
-//               </div>
-//             ))}
-//           </div>
-//         </Card>
-//       )}
-
-//       {/* Search */}
-//       <Card className="p-3 sm:p-4 bg-gradient-card border-0 shadow-soft">
-//         <div className="relative">
-//           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-//           <Input
-//             placeholder="Search inventory..."
-//             value={searchTerm}
-//             onChange={(e) => setSearchTerm(e.target.value)}
-//             className="pl-10"
-//           />
-//         </div>
-//       </Card>
-
-//       {/* Inventory Grid */}
-//       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-//         {filteredInventory.map((item) => {
-//           const stockStatus = getStockStatus(item);
-//           return (
-//             <Card key={item.id} className="p-4 sm:p-6 bg-gradient-card border-0 shadow-soft hover:shadow-medium transition-all duration-300">
-//               <div className="flex items-start justify-between mb-4">
-//                 <div className="flex-1 min-w-0">
-//                   <h3 className="font-semibold text-foreground mb-1 text-sm sm:text-base truncate">{item.name}</h3>
-//                   <p className="text-xs sm:text-sm text-muted-foreground">{item.category}</p>
-//                 </div>
-//                 <Badge className={`${stockStatus.color} text-xs ml-2 flex-shrink-0`}>{stockStatus.status}</Badge>
-//               </div>
-              
-//               <div className="space-y-3">
-//                 <div className="flex justify-between items-center">
-//                   <span className="text-xs sm:text-sm text-muted-foreground">Current Stock:</span>
-//                   <span className="font-medium text-foreground text-sm sm:text-base">{item.quantity} {item.unit}</span>
-//                 </div>
-                
-//                 <div className="flex justify-between items-center">
-//                   <span className="text-xs sm:text-sm text-muted-foreground">Min Stock:</span>
-//                   <span className="text-xs sm:text-sm text-muted-foreground">{item.minStock} {item.unit}</span>
-//                 </div>
-                
-//                 <div className="w-full bg-muted rounded-full h-2">
-//                   <div 
-//                     className={`h-2 rounded-full transition-all duration-300 ${
-//                       item.quantity <= item.minStock ? "bg-destructive" :
-//                       item.quantity <= item.minStock * 1.5 ? "bg-warning" :
-//                       "bg-success"
-//                     }`}
-//                     style={{ 
-//                       width: `${Math.min((item.quantity / (item.minStock * 2)) * 100, 100)}%` 
-//                     }}
-//                   />
-//                 </div>
-                
-//                 <div className="text-xs text-muted-foreground">
-//                   Last updated: {item.lastUpdated}
-//                 </div>
-//               </div>
-              
-//               <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
-//                 <Button size="sm" variant="outline" className="flex-1 text-xs sm:text-sm">Update</Button>
-//                 <Button size="sm" className="bg-gradient-primary hover:opacity-90 flex-1 text-xs sm:text-sm">Restock</Button>
-//               </div>
-//             </Card>
-//           );
-//         })}
-//       </div>
-//     </div>
-//   );
-// }
-
 import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -230,8 +13,19 @@ import {
   Edit,
   ShoppingCart,
   Trash2,
+  User,
+  Calendar,
+  History,
 } from "lucide-react";
-import GradientText from "../ui/GradientText";
+
+
+interface UpdateHistory {
+  date: string;
+  updatedBy: string;
+  action: "Created" | "Updated";
+  quantityChange: number;
+  newQuantity: number;
+}
 
 interface InventoryItem {
   id: number;
@@ -242,8 +36,9 @@ interface InventoryItem {
   unit: string;
   purchasePrice: number;
   sellingPrice: number;
-  supplier?: string;
   lastUpdated: string;
+  lastUpdatedBy?: string;
+  history: UpdateHistory[];
 }
 
 interface FormData {
@@ -251,10 +46,8 @@ interface FormData {
   category: string;
   unit: string;
   quantity: string;
-  minStock: string;
   purchasePrice: string;
   sellingPrice: string;
-  supplier: string;
 }
 
 // Step 1: Removed static data - no sampleInventory array
@@ -268,15 +61,15 @@ export default function InventoryManager() {
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
   const [updateQuantity, setUpdateQuantity] = useState("");
+  const [updaterName, setUpdaterName] = useState("");
+  const [showHistoryModal, setShowHistoryModal] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     category: "",
     unit: "",
     quantity: "",
-    minStock: "",
     purchasePrice: "",
     sellingPrice: "",
-    supplier: "",
   });
 
   // Step 1: Modified to start with empty inventory instead of sample data
@@ -332,10 +125,8 @@ export default function InventoryManager() {
       category: "",
       unit: "",
       quantity: "",
-      minStock: "",
       purchasePrice: "",
       sellingPrice: "",
-      supplier: "",
     });
   };
 
@@ -345,7 +136,6 @@ export default function InventoryManager() {
       !formData.category ||
       !formData.unit ||
       !formData.quantity ||
-      !formData.minStock ||
       !formData.purchasePrice ||
       !formData.sellingPrice
     ) {
@@ -353,17 +143,27 @@ export default function InventoryManager() {
       return;
     }
 
+    const newQuantity = parseInt(formData.quantity);
     const newItem: InventoryItem = {
       id: Date.now(),
       name: formData.name,
       category: formData.category,
       unit: formData.unit,
-      quantity: parseInt(formData.quantity),
-      minStock: parseInt(formData.minStock),
+      quantity: newQuantity,
+      minStock: 5, // Default min stock
       purchasePrice: parseFloat(formData.purchasePrice),
       sellingPrice: parseFloat(formData.sellingPrice),
-      supplier: formData.supplier,
       lastUpdated: getCurrentDate(),
+      lastUpdatedBy: "System",
+      history: [
+        {
+          date: getCurrentDate(),
+          updatedBy: "System",
+          action: "Created",
+          quantityChange: newQuantity,
+          newQuantity: newQuantity,
+        },
+      ],
     };
 
     setInventory((prev) => [...prev, newItem]);
@@ -381,10 +181,32 @@ export default function InventoryManager() {
 
   // Step 2: Fixed update functionality
   const handleUpdateStock = (item: InventoryItem, newQuantity: number) => {
+    if (!updaterName.trim()) {
+      alert("Please provide the name of the person updating the stock.");
+      return;
+    }
+    const oldQuantity = item.quantity;
+    const quantityChange = newQuantity - oldQuantity;
+
     setInventory((prev) =>
       prev.map((invItem) =>
         invItem.id === item.id
-          ? { ...invItem, quantity: newQuantity, lastUpdated: getCurrentDate() }
+          ? {
+              ...invItem,
+              quantity: newQuantity,
+              lastUpdated: getCurrentDate(),
+              lastUpdatedBy: updaterName,
+              history: [
+                ...(invItem.history || []),
+                {
+                  date: getCurrentDate(),
+                  updatedBy: updaterName,
+                  action: "Updated",
+                  quantityChange: quantityChange,
+                  newQuantity: newQuantity,
+                },
+              ],
+            }
           : invItem
       )
     );
@@ -393,12 +215,17 @@ export default function InventoryManager() {
     setEditingItem(null);
     setShowUpdateForm(false);
     setUpdateQuantity("");
+    setUpdaterName("");
   };
 
   // Step 2: Fixed restock functionality
   const handleRestock = (item: InventoryItem, additionalQuantity: number) => {
     if (additionalQuantity <= 0) {
       alert("Please enter a valid quantity to add");
+      return;
+    }
+    if (!updaterName.trim()) {
+      alert("Please provide the name of the person updating the stock.");
       return;
     }
 
@@ -409,6 +236,7 @@ export default function InventoryManager() {
               ...invItem,
               quantity: invItem.quantity + additionalQuantity,
               lastUpdated: getCurrentDate(),
+              lastUpdatedBy: updaterName,
             }
           : invItem
       )
@@ -416,6 +244,7 @@ export default function InventoryManager() {
     setEditingItem(null);
     setShowUpdateForm(false);
     setUpdateQuantity("");
+    setUpdaterName("");
   };
 
   // Step 4: Added delete functionality
@@ -446,14 +275,7 @@ export default function InventoryManager() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            <GradientText
-              colors={["#00cc77", "#0044cc", "#00cc77", "#0044cc", "#00cc77"]}
-              animationSpeed={3}
-              showBorder={false}
-              className="custom-class"
-            >
               Inventory Management
-            </GradientText>
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
             Track materials and stock levels
@@ -667,25 +489,6 @@ export default function InventoryManager() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Min Stock Level <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      type="number"
-                      value={formData.minStock}
-                      onChange={(e) =>
-                        handleFormChange("minStock", e.target.value)
-                      }
-                      placeholder="0"
-                      min="0"
-                      required
-                      className="no-spinner"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Purchase Price <span className="text-red-500">*</span>
                     </label>
                     <Input
@@ -701,7 +504,9 @@ export default function InventoryManager() {
                       className="no-spinner"
                     />
                   </div>
+                </div>
 
+                <div className="grid grid-cols-1 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Selling Price <span className="text-red-500">*</span>
@@ -719,29 +524,6 @@ export default function InventoryManager() {
                       className="no-spinner"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Supplier/Vendor
-                  </label>
-                  <Input
-                    value={formData.supplier}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Allow only letters, spaces, &, and -
-                      if (/^[A-Za-z\s&-]*$/.test(value)) {
-                        handleFormChange("supplier", value);
-                      }
-                    }}
-                    placeholder="Optional"
-                  />
-                  {formData.supplier &&
-                    !/^[A-Za-z\s&-]+$/.test(formData.supplier) && (
-                      <p className="text-red-500 text-sm mt-1">
-                        Supplier/Vendor name should not contain numbers.
-                      </p>
-                    )}
                 </div>
               </div>
 
@@ -810,6 +592,18 @@ export default function InventoryManager() {
                     className="no-spinner"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Updated By <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    type="text"
+                    value={updaterName}
+                    onChange={(e) => setUpdaterName(e.target.value)}
+                    placeholder="Enter your name"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="flex space-x-3 mt-6">
@@ -821,31 +615,12 @@ export default function InventoryManager() {
                   Cancel
                 </Button>
                 <Button
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:cursor-not-allowed"
-                  onClick={() =>
-                    handleRestock(
-                      editingItem,
-                      parseInt(updateQuantity) - editingItem.quantity
-                    )
-                  }
-                  disabled={
-                    !updateQuantity ||
-                    parseInt(updateQuantity) <= editingItem.quantity ||
-                    isRestockDisabled(editingItem.quantity)
-                  }
-                >
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  Restock
-                </Button>
-                <Button
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                   onClick={() =>
                     handleUpdateStock(editingItem, parseInt(updateQuantity))
                   }
-                  disabled={!updateQuantity || parseInt(updateQuantity) < 0}
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                 >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Update
+                  Update Stock
                 </Button>
               </div>
             </div>
@@ -853,167 +628,168 @@ export default function InventoryManager() {
         </div>
       )}
 
-      {/* Inventory Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-        {filteredInventory.map((item) => {
-          const stockStatus = getStockStatus(item);
-          return (
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-gray-900">
+                  Update History for: {showHistoryModal.name}
+                </h2>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowHistoryModal(null)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {showHistoryModal.history &&
+              showHistoryModal.history.length > 0 ? (
+                <ul className="space-y-4">
+                  {showHistoryModal.history
+                    .slice()
+                    .reverse()
+                    .map((entry, index) => (
+                      <li key={index} className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                            <User className="h-5 w-5 text-gray-600" />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">
+                            {entry.updatedBy}{" "}
+                            <span className="text-gray-500 font-normal">
+                              {entry.action === "Created"
+                                ? "created the item"
+                                : `updated the stock`}
+                            </span>
+                          </p>
+                          <p className="text-xs text-gray-500 mb-1">
+                            {new Date(entry.date).toLocaleString()}
+                          </p>
+                          <p className="text-sm text-gray-700">
+                            Quantity changed by{" "}
+                            <span
+                              className={`font-bold ${
+                                entry.quantityChange >= 0
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {entry.quantityChange > 0
+                                ? `+${entry.quantityChange}`
+                                : entry.quantityChange}
+                            </span>
+                            , new quantity is{" "}
+                            <span className="font-bold">
+                              {entry.newQuantity}
+                            </span>
+                            .
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              ) : (
+                <div className="text-center py-10 text-gray-500">
+                  <History className="h-12 w-12 mx-auto mb-2" />
+                  <p>No history found for this item.</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Inventory List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        {filteredInventory.length > 0 ? (
+          filteredInventory.map((item) => (
             <Card
               key={item.id}
-              className="p-4 sm:p-6 bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
+              className="p-4 flex flex-col justify-between bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 mb-1 text-sm sm:text-base truncate">
+              <div>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-lg text-gray-800">
                     {item.name}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-600">
-                    {item.category}
-                  </p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Badge
-                    className={`${stockStatus.color} text-xs flex-shrink-0`}
-                  >
-                    {stockStatus.status}
+                  <Badge className={getStockStatus(item).color}>
+                    {getStockStatus(item).status}
                   </Badge>
-                  {/* Step 4: Added delete button */}
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-red-600 hover:bg-red-50 hover:text-foreground p-1 h-6 w-6"
-                    onClick={() => handleDeleteItem(item.id, item.name)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
                 </div>
-              </div>
+                <p className="text-sm text-gray-500 mb-3">{item.category}</p>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Current Stock:
-                  </span>
-                  <span className="font-medium text-gray-900 text-sm sm:text-base">
-                    {item.quantity} 
-                    {/* {item.quantity} {item.unit} */}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Min Stock:
-                  </span>
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    {/* {item.minStock} {item.unit} */}
-                    {item.minStock} 
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Purchase Price:
-                  </span>
-                  <span className="text-xs sm:text-sm text-gray-900">
-                    ₹{item.purchasePrice}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-xs sm:text-sm text-gray-600">
-                    Selling Price:
-                  </span>
-                  <span className="text-xs sm:text-sm text-gray-900">
-                    ₹{item.sellingPrice}
-                  </span>
-                </div>
-
-                {item.supplier && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-xs sm:text-sm text-gray-600">
-                      Supplier:
-                    </span>
-                    <span className="text-xs sm:text-sm text-gray-900">
-                      {item.supplier}
-                    </span>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+                  <div className="font-medium text-gray-700">Stock</div>
+                  <div>
+                    {item.quantity} {item.unit}
                   </div>
-                )}
-
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      item.quantity <= item.minStock
-                        ? "bg-red-500"
-                        : item.quantity <= item.minStock * 1.5
-                        ? "bg-yellow-500"
-                        : "bg-green-500"
-                    }`}
-                    style={{
-                      width: `${Math.min(
-                        (item.quantity / (item.minStock * 2)) * 100,
-                        100
-                      )}%`,
-                    }}
-                  />
+                  <div className="font-medium text-gray-700">Purchase Price</div>
+                  <div>₹{item.purchasePrice.toLocaleString()}</div>
+                  <div className="font-medium text-gray-700">Selling Price</div>
+                  <div>₹{item.sellingPrice.toLocaleString()}</div>
                 </div>
 
-                <div className="text-xs text-gray-500">
-                  Last updated: {item.lastUpdated}
+                <div className="border-t border-gray-200 pt-3 space-y-2 text-xs text-gray-500">
+                  <div className="flex items-center">
+                    <Calendar className="h-3 w-3 mr-2" />
+                    Last Updated: {item.lastUpdated}
+                  </div>
+                  <div className="flex items-center">
+                    <User className="h-3 w-3 mr-2" />
+                    Updated By: {item.lastUpdatedBy || "N/A"}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 mt-4">
+              <div className="flex space-x-2 mt-4">
                 <Button
-                  size="sm"
                   variant="outline"
-                  className="flex-1 text-xs sm:text-sm"
+                  size="sm"
+                  className="flex-1"
                   onClick={() => openUpdateForm(item)}
                 >
                   <Edit className="h-3 w-3 mr-1" />
                   Update
                 </Button>
-                {/* Step 3: Restock button disabled when stock >= 5 */}
                 <Button
+                  variant="outline"
                   size="sm"
-                  className={`text-white flex-1 text-xs sm:text-sm ${
-                    isRestockDisabled(item.quantity)
-                      ? "bg-gray-400 hover:bg-gray-400 cursor-not-allowed"
-                      : "bg-blue-600 hover:bg-blue-700"
-                  }`}
-                  onClick={() => openUpdateForm(item)}
-                  disabled={isRestockDisabled(item.quantity)}
+                  className="flex-1"
+                  onClick={() => setShowHistoryModal(item)}
                 >
-                  <ShoppingCart className="h-3 w-3 mr-1" />
-                  Restock
+                  <History className="h-3 w-3 mr-1" />
+                  History
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => handleDeleteItem(item.id, item.name)}
+                >
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
                 </Button>
               </div>
             </Card>
-          );
-        })}
+          ))
+        ) : (
+          <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-10 text-gray-500">
+            <Package className="h-12 w-12 mx-auto mb-2" />
+            <p>No inventory items found.</p>
+            <p className="text-sm">
+              Click "Add Item" to get started.
+            </p>
+          </div>
+        )}
       </div>
-
-      {filteredInventory.length === 0 && (
-        <Card className="p-8 text-center">
-          <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No items found
-          </h3>
-          <p className="text-gray-600 mb-4">
-            {searchTerm
-              ? "No items match your search criteria."
-              : "Start by adding your first inventory item."}
-          </p>
-          {!searchTerm && (
-            <Button
-              onClick={() => setShowAddForm(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add First Item
-            </Button>
-          )}
-        </Card>
-      )}
     </div>
   );
 }
