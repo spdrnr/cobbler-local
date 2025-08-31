@@ -61,7 +61,7 @@ export function AppSidebar({ currentView, onViewChange }: AppSidebarProps) {
             <Package className="h-6 w-6 text-white" />
           </div>
           <div className="group-data-[collapsible=icon]:hidden">
-            <h2 className="text-lg font-bold text-foreground">CobblerCRM</h2>
+            <h2 className="text-lg font-bold text-foreground">Cobbler CRM</h2>
             <p className="text-sm text-muted-foreground">Business Management</p>
           </div>
         </div>

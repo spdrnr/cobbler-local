@@ -450,6 +450,7 @@ export function DeliveryModule() {
                             type="datetime-local" 
                             value={scheduledDateTime}
                             onChange={(e) => setScheduledDateTime(e.target.value)}
+                            min={new Date().toISOString().slice(0, 16)}   // 👈 restrict past dates
                           />
                         </div>
                         <Button
