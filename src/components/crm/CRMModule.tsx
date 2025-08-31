@@ -6,11 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Search, Filter, Instagram, Facebook, MessageCircle, Briefcase, ShoppingBag, Edit, Save, X, Phone, PhoneCall, CheckCircle, ArrowRight, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Plus, Search, Filter, Instagram, Facebook, MessageCircle, Briefcase, ShoppingBag, Edit, Save, X, Phone, PhoneCall, CheckCircle, ArrowRight, Loader2, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Enquiry } from "@/types";
-import { fetchEnquiries, addEnquiry } from "@/services/enquiryService";
+import { useEnquiriesWithPolling, useCrmStats } from "@/services/enquiryApiService";
 
 // Helper function to get business-appropriate stage display
 const getStageDisplay = (stage: string): string => {
@@ -48,47 +48,39 @@ const getStageBadgeColor = (stage: string): string => {
   }
 };
 
+
 interface CRMModuleProps {
   activeAction?: string | null;
 }
 
 export function CRMModule({ activeAction }: CRMModuleProps = {}) {
   const { toast } = useToast();
-  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Load data from API on component mount and refresh periodically
-  useEffect(() => {
-    const loadEnquiries = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchEnquiries();
-        setEnquiries(data);
-      } catch (error) {
-        console.error('Failed to load enquiries:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load enquiries. Please try again.",
-          className: "bg-red-50 border-red-200 text-red-800",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    loadEnquiries();
-    
-    // Refresh data every 30 seconds to catch updates
-    const interval = setInterval(loadEnquiries, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
+  
+  // Use API hooks with 30-second polling
+  const { 
+    enquiries, 
+    loading: enquiriesLoading, 
+    error: enquiriesError, 
+    addEnquiry, 
+    updateEnquiry,
+    deleteEnquiry
+  } = useEnquiriesWithPolling(30000);
+  
+  const { 
+    stats, 
+    loading: statsLoading, 
+    error: statsError 
+  } = useCrmStats();
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editData, setEditData] = useState<Partial<Enquiry>>({});
+  
+  // Convert dialog state
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
+  const [convertingEnquiry, setConvertingEnquiry] = useState<Enquiry | null>(null);
+  const [quotedAmount, setQuotedAmount] = useState<string>("");
+  
   const [formData, setFormData] = useState({
     name: "",
     number: "",
@@ -101,54 +93,13 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
   const [formErrors, setFormErrors] = useState<{[key: string]: string}>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Calculate dynamic stats
-  const calculateStats = () => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    
-    // Get start of current week (Monday)
-    const startOfWeek = new Date(now);
-    const dayOfWeek = now.getDay();
-    const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Handle Sunday as 0
-    startOfWeek.setDate(now.getDate() - daysToSubtract);
-    startOfWeek.setHours(0, 0, 0, 0);
-
-    const stats = {
-      totalCurrentMonth: 0,
-      newThisWeek: 0,
-      converted: 0,
-      pendingFollowUp: 0
-    };
-
-    enquiries.forEach(enquiry => {
-      const enquiryDate = new Date(enquiry.date);
-      
-      // Total enquiries for current month
-      if (enquiryDate.getMonth() === currentMonth && enquiryDate.getFullYear() === currentYear) {
-        stats.totalCurrentMonth++;
-      }
-      
-      // New enquiries this week
-      if (enquiryDate >= startOfWeek && enquiry.status === "new") {
-        stats.newThisWeek++;
-      }
-      
-      // Converted enquiries
-      if (enquiry.status === "converted") {
-        stats.converted++;
-      }
-      
-      // Pending follow-up (contacted status)
-      if (enquiry.status === "contacted") {
-        stats.pendingFollowUp++;
-      }
-    });
-
-    return stats;
+  // Use stats from API instead of calculating locally
+  const calculatedStats = stats || {
+    totalCurrentMonth: 0,
+    newThisWeek: 0,
+    converted: 0,
+    pendingFollowUp: 0
   };
-
-  const stats = calculateStats();
 
   // Handle active action from quick actions
   useEffect(() => {
@@ -158,7 +109,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
   }, [activeAction]);
 
   // Individual field validation functions
-  const validateField = (fieldName: string, value: any): string => {
+  const validateField = (fieldName: string, value: string): string => {
     switch (fieldName) {
       case 'name':
         if (!value.trim()) {
@@ -173,7 +124,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
           return "Phone number is required";
         } else {
           // Remove all spaces and hyphens for validation
-          const cleanNumber = value.replace(/[\s\-]/g, '');
+          const cleanNumber = value.replace(/[\s-]/g, '');
           // Indian phone number: optional +91 followed by exactly 10 digits
           const phoneRegex = /^(\+91)?[0-9]{10}$/;
           if (!phoneRegex.test(cleanNumber)) {
@@ -210,7 +161,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
         }
         break;
       
-      case 'quantity':
+      case 'quantity': {
         const numValue = parseInt(value);
         if (!value || value.trim() === "") {
           return "Quantity is required";
@@ -222,6 +173,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
           return "Quantity cannot exceed 100";
         }
         break;
+      }
     }
     return "";
   };
@@ -284,63 +236,31 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
       return;
     }
     
-    setSubmitting(true);
-    try {
-      const newEnquiryPayload = {
-        customerName: formData.name,
-        phone: formData.number.replace(/\D/g, ''), // Remove non-digits
-        address: formData.location,
-        message: formData.message,
-        inquiryType: formData.inquiryType as "Instagram" | "Facebook" | "WhatsApp",
-        product: formData.product as "Bag" | "Shoe" | "Wallet" | "Belt" | "All type furniture",
-        quantity: parseInt(formData.quantity) || 1,
-      };
+    const newEnquiry = await addEnquiry({
+      customerName: formData.name,
+      phone: formData.number.replace(/\D/g, ''), // Remove non-digits
+      address: formData.location,
+      message: formData.message,
+      inquiryType: formData.inquiryType as "Instagram" | "Facebook" | "WhatsApp",
+      product: formData.product as "Bag" | "Shoe" | "Wallet" | "Belt" | "All type furniture",
+      quantity: parseInt(formData.quantity) || 1,
+      date: new Date().toISOString().split('T')[0],
+      status: "new",
+      contacted: false,
+      currentStage: "enquiry",
 
-      console.log('Adding enquiry with payload:', newEnquiryPayload);
-      
-      const newEnquiry = await addEnquiry(newEnquiryPayload);
-      
-      console.log('Enquiry added successfully:', newEnquiry);
-      
-      // Refresh the enquiries list
-      const updatedEnquiries = await fetchEnquiries();
-      setEnquiries(updatedEnquiries);
-      
-      // Reset form
-      setFormData({ name: "", number: "", location: "", message: "", inquiryType: "", product: "", quantity: "1" });
-      setFormErrors({});
-      
-      // Show success message in modal
-      setShowSuccess(true);
-      
-      toast({
-        title: "Success!",
-        description: "Enquiry added successfully.",
-        className: "bg-green-50 border-green-200 text-green-800",
-      });
-      
-      // Auto close modal after showing success
-      setTimeout(() => {
-        setShowSuccess(false);
-        setShowForm(false);
-      }, 2000);
-      
-    } catch (error: any) {
-      console.error('Failed to add enquiry:', error);
-      
-      // Show more specific error message
-      const errorMessage = error?.message || 'Failed to add enquiry. Please try again.';
-      
-      toast({
-        title: "Error Adding Enquiry",
-        description: errorMessage.includes('Server error') ? 
-          "Server error occurred. Please check your data and try again." : 
-          errorMessage,
-        className: "bg-red-50 border-red-200 text-red-800",
-      });
-    } finally {
-      setSubmitting(false);
-    }
+    });
+    setFormData({ name: "", number: "", location: "", message: "", inquiryType: "", product: "", quantity: "1" });
+    setFormErrors({});
+    
+    // Show success message in modal
+    setShowSuccess(true);
+    
+    // Auto close modal after showing success
+    setTimeout(() => {
+      setShowSuccess(false);
+      setShowForm(false);
+    }, 2000);
   };
 
   const handleEdit = (enquiry: Enquiry) => {
@@ -350,36 +270,18 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
 
   const handleSaveEdit = async (id: number) => {
     try {
-      // For now, keep using localStorage for edit until update API is integrated
-      // This maintains backward compatibility
-      const enquiriesStorage = {
-        getAll: () => enquiries,
-        update: (id: number, data: Partial<Enquiry>) => {
-          const updatedEnquiries = enquiries.map(e => e.id === id ? { ...e, ...data } : e);
-          setEnquiries(updatedEnquiries);
-          return updatedEnquiries.find(e => e.id === id);
-        }
-      };
-      
-      const updatedEnquiry = enquiriesStorage.update(id, editData);
+      const updatedEnquiry = await updateEnquiry(id, editData);
       if (updatedEnquiry) {
-        setEnquiries(enquiriesStorage.getAll());
-        toast({
-          title: "Success!",
-          description: "Enquiry updated successfully.",
-          className: "bg-green-50 border-green-200 text-green-800",
-        });
+        setEditingId(null);
+        setEditData({});
       }
     } catch (error) {
-      console.error('Failed to update enquiry:', error);
       toast({
         title: "Error",
-        description: "Failed to update enquiry. Please try again.",
-        className: "bg-red-50 border-red-200 text-red-800",
+        description: "Failed to update enquiry",
+        variant: "destructive",
       });
     }
-    setEditingId(null);
-    setEditData({});
   };
 
   const handleCancelEdit = () => {
@@ -387,47 +289,53 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
     setEditData({});
   };
 
-  const markAsConverted = (enquiry: Enquiry) => {
-    const updatedEnquiry = {
-      ...enquiry,
-      status: "converted" as const,
-      contacted: true,
-      contactedAt: new Date().toISOString()
-    };
-    
-    // Update locally for now - you can integrate update API later
-    const updatedEnquiries = enquiries.map(e => e.id === enquiry.id ? updatedEnquiry : e);
-    setEnquiries(updatedEnquiries);
-    
-    toast({
-      title: "Enquiry Converted!",
-      description: `${enquiry.customerName} has been marked as converted and is ready for pickup scheduling.`,
-      className: "bg-blue-50 border-blue-200 text-blue-800",
-    });
+  const handleDelete = async (enquiry: Enquiry) => {
+    if (window.confirm(`Are you sure you want to delete the enquiry for ${enquiry.customerName}?`)) {
+      try {
+        await deleteEnquiry(enquiry.id);
+        toast({
+          title: "Enquiry Deleted",
+          description: `${enquiry.customerName}'s enquiry has been deleted successfully.`,
+          className: "bg-red-50 border-red-200 text-red-800",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete enquiry",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
-  const schedulePickup = (enquiry: Enquiry) => {
-    const updatedEnquiry = {
-      ...enquiry,
-      currentStage: "pickup" as const,
-      status: "converted" as const,
-      pickupDetails: {
-        status: "scheduled" as const,
-        scheduledTime: "", // Will be set when pickup is scheduled
-        photos: {},
+  const markAsConverted = (enquiry: Enquiry) => {
+    setConvertingEnquiry(enquiry);
+    setQuotedAmount(""); // Clear previous quoted amount
+    setShowConvertDialog(true);
+  };
+
+  const schedulePickup = async (enquiry: Enquiry) => {
+    try {
+      const updatedEnquiry = await updateEnquiry(enquiry.id, {
+        currentStage: "pickup" as const,
+        status: "converted" as const,
+      });
+      
+      if (updatedEnquiry) {
+        toast({
+          title: "Pickup Scheduled!",
+          description: `${enquiry.customerName}'s item moved to pickup!`,
+          className: "bg-green-50 border-green-200 text-green-800",
+          duration: 1000,
+        });
       }
-    };
-    
-    // Update locally for now - you can integrate update API later
-    const updatedEnquiries = enquiries.map(e => e.id === enquiry.id ? updatedEnquiry : e);
-    setEnquiries(updatedEnquiries);
-    
-    toast({
-      title: "Pickup Scheduled!",
-      description: `${enquiry.customerName}'s item moved to pickup!`,
-      className: "bg-green-50 border-green-200 text-green-800",
-      duration: 1000,
-    });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to schedule pickup",
+        variant: "destructive",
+      });
+    }
   };
 
   const getInquiryIcon = (type: string) => {
@@ -474,9 +382,9 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
 
   const filteredEnquiries = enquiries
     .filter(enquiry =>
-      (enquiry.name || enquiry.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (enquiry.location || enquiry.address || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (enquiry.message || '').toLowerCase().includes(searchTerm.toLowerCase())
+      enquiry.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      enquiry.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      enquiry.message.toLowerCase().includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       // Sort by creation date in descending order (newest first)
@@ -493,17 +401,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
 
   const showReviewSection = formData.product && parseInt(formData.quantity) > 0;
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-          <span className="text-gray-600">Loading enquiries...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in p-2 sm:p-0">
       {/* Header */}
@@ -518,7 +415,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
             setFormErrors({});
             setShowSuccess(false);
           }
-        }} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto" disabled={submitting}>
+        }} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-0" />
           Add Enquiry
         </Button>
@@ -527,19 +424,27 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="p-3 sm:p-4 bg-white border shadow-sm">
-          <div className="text-lg sm:text-2xl font-bold text-gray-900">{stats.totalCurrentMonth}</div>
+          <div className="text-lg sm:text-2xl font-bold text-gray-900">
+            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : calculatedStats.totalCurrentMonth}
+          </div>
           <div className="text-xs sm:text-sm text-gray-500">This Month</div>
         </Card>
         <Card className="p-3 sm:p-4 bg-white border shadow-sm">
-          <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.newThisWeek}</div>
+          <div className="text-lg sm:text-2xl font-bold text-blue-600">
+            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : calculatedStats.newThisWeek}
+          </div>
           <div className="text-xs sm:text-sm text-gray-500">This Week</div>
         </Card>
         <Card className="p-3 sm:p-4 bg-white border shadow-sm">
-          <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.converted}</div>
+          <div className="text-lg sm:text-2xl font-bold text-green-600">
+            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : calculatedStats.converted}
+          </div>
           <div className="text-xs sm:text-sm text-gray-500">Converted</div>
         </Card>
         <Card className="p-3 sm:p-4 bg-white border shadow-sm">
-          <div className="text-lg sm:text-2xl font-bold text-yellow-600">{stats.pendingFollowUp}</div>
+          <div className="text-lg sm:text-2xl font-bold text-yellow-600">
+            {statsLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : calculatedStats.pendingFollowUp}
+          </div>
           <div className="text-xs sm:text-sm text-gray-500">Pending Follow-up</div>
         </Card>
       </div>
@@ -570,7 +475,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                     }
                   }}
                   className={`mt-1 ${formErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
-                  disabled={submitting}
                 />
                 {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
               </div>
@@ -592,7 +496,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                     }
                   }}
                   className={`mt-1 ${formErrors.number ? 'border-red-500 focus:border-red-500' : ''}`}
-                  disabled={submitting}
                 />
                 {formErrors.number && <p className="text-red-500 text-xs mt-1">{formErrors.number}</p>}
               </div>
@@ -611,7 +514,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                       setFormErrors({ ...formErrors, inquiryType: error });
                     }
                   }}
-                  disabled={submitting}
                 >
                   <SelectTrigger className={`mt-1 ${formErrors.inquiryType ? 'border-red-500 focus:border-red-500' : ''}`}>
                     <SelectValue placeholder="Select source" />
@@ -639,7 +541,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                       setFormErrors({ ...formErrors, product: error });
                     }
                   }}
-                  disabled={submitting}
                 >
                   <SelectTrigger className={`mt-1 ${formErrors.product ? 'border-red-500 focus:border-red-500' : ''}`}>
                     <SelectValue placeholder="Select product" />
@@ -680,7 +581,6 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                   }}
                   placeholder="Enter quantity (e.g., 2)"
                   className={`mt-1 ${formErrors.quantity ? 'border-red-500 focus:border-red-500' : ''}`}
-                  disabled={submitting}
                 />
                 {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
               </div>
@@ -698,16 +598,15 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                     setFormErrors({ ...formErrors, location: "" });
                   }
                 }}
-                onBlur={(e) => {
-                  const error = validateField('location', e.target.value);
-                  if (error) {
-                    setFormErrors({ ...formErrors, location: error });
-                  }
-                }}
+                                 onBlur={(e) => {
+                   const error = validateField('location', e.target.value);
+                   if (error) {
+                     setFormErrors({ ...formErrors, location: error });
+                   }
+                 }}
                 placeholder="Enter complete address..."
                 className={`mt-1 min-h-[80px] ${formErrors.location ? 'border-red-500 focus:border-red-500' : ''}`}
                 rows={3}
-                disabled={submitting}
               />
               {formErrors.location && <p className="text-red-500 text-xs mt-1">{formErrors.location}</p>}
             </div>
@@ -723,16 +622,15 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                     setFormErrors({ ...formErrors, message: "" });
                   }
                 }}
-                onBlur={(e) => {
-                  const error = validateField('message', e.target.value);
-                  if (error) {
-                    setFormErrors({ ...formErrors, message: error });
-                  }
-                }}
+                                 onBlur={(e) => {
+                   const error = validateField('message', e.target.value);
+                   if (error) {
+                     setFormErrors({ ...formErrors, message: error });
+                   }
+                 }}
                 placeholder="Customer's inquiry details..."
                 className={`mt-1 min-h-[100px] ${formErrors.message ? 'border-red-500 focus:border-red-500' : ''}`}
                 rows={4}
-                disabled={submitting}
               />
               {formErrors.message && <p className="text-red-500 text-xs mt-1">{formErrors.message}</p>}
             </div>
@@ -763,30 +661,14 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
             )}
 
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2 pt-4">
-              <Button 
-                onClick={handleSubmit} 
-                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
-                disabled={submitting}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Enquiry"
-                )}
+              <Button onClick={handleSubmit} className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto">
+                Save Enquiry
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowForm(false);
-                  setFormErrors({});
-                  setShowSuccess(false);
-                }} 
-                className="w-full sm:w-auto"
-                disabled={submitting}
-              >
+              <Button variant="outline" onClick={() => {
+                setShowForm(false);
+                setFormErrors({});
+                setShowSuccess(false);
+              }} className="w-full sm:w-auto">
                 Cancel
               </Button>
             </div>
@@ -823,7 +705,27 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
 
       {/* Enquiries List */}
       <div className="space-y-3 sm:space-y-4">
-        {filteredEnquiries.map((enquiry) => (
+        {enquiriesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600">Loading enquiries...</span>
+          </div>
+        ) : enquiriesError ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Error loading enquiries</p>
+              <p className="text-sm text-gray-500">{enquiriesError}</p>
+            </div>
+          </div>
+        ) : filteredEnquiries.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="text-center">
+              <p className="text-gray-600 mb-2">No enquiries found</p>
+              <p className="text-sm text-gray-500">Try adjusting your search or add a new enquiry</p>
+            </div>
+          </div>
+        ) : (
+          filteredEnquiries.map((enquiry) => (
           <Card key={enquiry.id} className="p-4 sm:p-6 bg-white border shadow-sm hover:shadow-md transition-all duration-300">
             {editingId === enquiry.id ? (
               // Edit Mode
@@ -845,19 +747,19 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Name</Label>
-                    <Input
-                      value={editData.customerName || editData.name || enquiry.customerName || enquiry.name}
-                      onChange={(e) => setEditData({ ...editData, name: e.target.value, customerName: e.target.value })}
-                      className="mt-1"
-                    />
+                                         <Input
+                       value={editData.customerName || enquiry.customerName}
+                       onChange={(e) => setEditData({ ...editData, customerName: e.target.value })}
+                       className="mt-1"
+                     />
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Phone</Label>
-                    <Input
-                      value={editData.phone || editData.number || enquiry.phone || enquiry.number}
-                      onChange={(e) => setEditData({ ...editData, number: e.target.value, phone: e.target.value })}
-                      className="mt-1"
-                    />
+                                         <Input
+                       value={editData.phone || enquiry.phone}
+                       onChange={(e) => setEditData({ ...editData, phone: e.target.value })}
+                       className="mt-1"
+                     />
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-700">Product</Label>
@@ -917,12 +819,12 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                 
                 <div>
                   <Label className="text-sm font-medium text-gray-700">Address</Label>
-                  <Textarea
-                    value={editData.address || editData.location || enquiry.address || enquiry.location}
-                    onChange={(e) => setEditData({ ...editData, location: e.target.value, address: e.target.value })}
-                    className="mt-1"
-                    rows={2}
-                  />
+                                     <Textarea
+                     value={editData.address || enquiry.address}
+                     onChange={(e) => setEditData({ ...editData, address: e.target.value })}
+                     className="mt-1"
+                     rows={2}
+                   />
                 </div>
                 
                 <div>
@@ -939,8 +841,8 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
               // View Mode
               <div className="flex flex-col lg:flex-row lg:items-start justify-between space-y-4 lg:space-y-0">
                 <div className="flex-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
-                    <h3 className="font-semibold text-gray-900 text-lg">{enquiry.customerName || enquiry.name}</h3>
+                                     <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-3">
+                     <h3 className="font-semibold text-gray-900 text-lg">{enquiry.customerName}</h3>
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge className={`${getStatusColor(enquiry.status)} text-xs px-2 py-1 rounded-full font-medium`}>
                         {enquiry.status}
@@ -958,16 +860,24 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-600 mb-3">
-                    <div className="flex items-center">📞 {enquiry.phone || enquiry.number}</div>
-                    <div className="flex items-center">📍 {enquiry.address || enquiry.location}</div>
-                    <div className="flex items-center">📅 {enquiry.date}</div>
-                  </div>
+                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-sm text-gray-600 mb-3">
+                     <div className="flex items-center">📞 {enquiry.phone}</div>
+                     <div className="flex items-center">📍 {enquiry.address}</div>
+                                           <div className="flex items-center">📅 {new Date(enquiry.date).toLocaleDateString()}</div>
+                   </div>
                   <p className="text-gray-700 text-sm sm:text-base mb-3">{enquiry.message}</p>
                   {/* Contact Status Display */}
                   <div className="mt-3">
                     {getContactStatus(enquiry)}
                   </div>
+                  
+                  {/* Quoted Amount Display */}
+                  {enquiry.status === "converted" && enquiry.quotedAmount && (
+                    <div className="mt-2 flex items-center space-x-1 text-green-600">
+                      <span className="text-sm font-medium">₹{enquiry.quotedAmount}</span>
+                      <span className="text-xs text-gray-500">(Quoted)</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 lg:ml-4 min-w-fit">
                   {/* Status/Stage Badge - Left Side */}
@@ -1005,12 +915,129 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
                     <Edit className="h-4 w-4 mr-1" />
                     Edit
                   </Button>
+                  
+                  {/* Delete Button */}
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleDelete(enquiry)} 
+                    className="w-full sm:w-auto text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
                 </div>
               </div>
             )}
           </Card>
-        ))}
+        ))
+        )}
       </div>
+      
+      {/* Convert Enquiry Dialog */}
+      <Dialog open={showConvertDialog} onOpenChange={setShowConvertDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert Enquiry</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {convertingEnquiry && (
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium text-gray-900">{convertingEnquiry.customerName}</h4>
+                  <p className="text-sm text-gray-600">{convertingEnquiry.message}</p>
+                  <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                    <span>{convertingEnquiry.product}</span>
+                    <span>•</span>
+                    <span>Qty: {convertingEnquiry.quantity}</span>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="quotedAmount" className="text-sm font-medium text-gray-700">
+                    Quoted Amount (₹)
+                  </Label>
+                  <Input
+                    id="quotedAmount"
+                    type="text"
+                    placeholder="0.00"
+                    value={quotedAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      // Allow only valid currency format: numbers with optional decimal and up to 2 decimal places
+                      if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                        setQuotedAmount(value);
+                      }
+                    }}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Enter amount in format: 0.00 (minimum 0.00)
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowConvertDialog(false);
+                setConvertingEnquiry(null);
+                setQuotedAmount("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (convertingEnquiry && quotedAmount.trim()) {
+                  const amount = parseFloat(quotedAmount);
+                  if (isNaN(amount) || amount < 0) {
+                    toast({
+                      title: "Invalid Amount",
+                      description: "Please enter a valid quoted amount (0.00 or greater).",
+                      variant: "destructive",
+                    });
+                    return;
+                  }
+                  
+                  const updatedEnquiry = {
+                    ...convertingEnquiry,
+                    status: "converted" as const,
+                    contacted: true,
+                    contactedAt: new Date().toISOString(),
+                    quotedAmount: amount
+                  };
+                  
+                  const result = await updateEnquiry(convertingEnquiry.id, updatedEnquiry);
+                  if (result) {
+                    toast({
+                      title: "Enquiry Converted!",
+                      description: `${convertingEnquiry.customerName} has been marked as converted with quoted amount ₹${amount}.`,
+                      className: "bg-blue-50 border-blue-200 text-blue-800",
+                    });
+                  }
+                  
+                  setShowConvertDialog(false);
+                  setConvertingEnquiry(null);
+                  setQuotedAmount("");
+                } else {
+                  toast({
+                    title: "Missing Information",
+                    description: "Please enter a quoted amount (0.00 or greater) to convert this enquiry.",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Convert Enquiry
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

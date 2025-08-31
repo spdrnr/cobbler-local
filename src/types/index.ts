@@ -156,10 +156,7 @@ export interface Enquiry {
   quotedAmount?: number;
   finalAmount?: number;
   
-  // Legacy field names for backwards compatibility
-  name?: string;
-  number?: string;
-  location?: string;
+
 }
 
 export interface ServiceOrder {
