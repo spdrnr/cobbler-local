@@ -36,7 +36,9 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:8080',
     'http://localhost:8081',
-    'http://localhost:3000'
+    'http://localhost:3000',
+    'https://cobbler-local-8k7t.onrender.com',
+    /\.onrender\.com$/
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -89,8 +91,17 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
+// Health check endpoints (must be before other routes)
 app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Cobbler Backend API is running',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0'
+  });
+});
+
+app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Cobbler Backend API is running',
@@ -109,7 +120,7 @@ if (process.env.NODE_ENV === 'production') {
   
   // Handle React routing, return all requests to React app
   app.get('*', (req, res) => {
-    // Skip API routes
+    // Skip API routes - but health endpoints should be handled above
     if (req.path.startsWith('/api/')) {
       return res.status(404).json({
         success: false,
