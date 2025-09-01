@@ -16,6 +16,7 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const FRONTEND_PORT = process.env.FRONTEND_PORT || 8080;
 
 // Security middleware
 app.use(helmet({
@@ -155,10 +156,11 @@ const startServer = async (): Promise<void> => {
     logDatabase.success('Database tables created/verified successfully');
     
     // Start the server
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Cobbler Backend API server is running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
+      console.log(`🌐 Frontend URL: http://localhost:${PORT}`);
       console.log(`📝 Logs directory: ${process.env.LOG_FILE_PATH || './logs'}`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
