@@ -1,8 +1,75 @@
 # Cobbler CRM Backend Setup Guide
 
-This guide will help you set up the backend server and MySQL database for the Cobbler CRM application.
+This guide will help you set up the backend server and MySQL database for the Cobbler CRM application. Choose between **Docker** (recommended) or **local development** setup.
 
-## Prerequisites
+## 🚀 Option 1: Docker Setup (Recommended)
+
+### Why Docker?
+- ✅ **No MySQL installation needed** - runs inside container
+- ✅ **No environment configuration** - works with defaults  
+- ✅ **Identical to production** - same as Render.com deployment
+- ✅ **Quick setup** - single command to run everything
+
+### Prerequisites
+- Docker installed on your system
+
+### Quick Start
+```bash
+# Build and run
+docker build -t cobbler-crm .
+docker run -d -p 3001:3001 --name cobbler-crm cobbler-crm
+
+# Verify it works
+curl http://localhost:3001/health
+curl -H "X-Token: cobbler_super_secret_token_2024" http://localhost:3001/api/enquiries
+
+# Access frontend
+open http://localhost:3001
+```
+
+### What Happens Automatically
+1. **MySQL Server** starts inside container
+2. **Database Created**: `cobbler_crm` 
+3. **Schema Created**: All tables automatically
+4. **Backend Started**: Node.js API on port 3001
+5. **Frontend Served**: React app from same port
+
+### Docker Management
+```bash
+# View logs
+docker logs -f cobbler-crm
+
+# Stop/start
+docker stop cobbler-crm
+docker start cobbler-crm  
+
+# Rebuild after changes
+docker stop cobbler-crm && docker rm cobbler-crm
+docker build -t cobbler-crm .
+docker run -d -p 3001:3001 --name cobbler-crm cobbler-crm
+
+# Access database
+docker exec -it cobbler-crm mysql -u root cobbler_crm
+```
+
+### Custom Configuration (Optional)
+```bash
+# Run with custom settings
+docker run -d -p 3001:3001 \
+  -e X_TOKEN_SECRET=your-custom-token \
+  -e DB_NAME=custom_db_name \
+  -e LOG_LEVEL=debug \
+  --name cobbler-crm \
+  cobbler-crm
+```
+
+---
+
+## 🛠️ Option 2: Local Development Setup
+
+For developers who want to run MySQL and Node.js locally.
+
+### Prerequisites
 
 - **Node.js** (v16 or higher)
 - **MySQL 8.0** (already installed on your system)
