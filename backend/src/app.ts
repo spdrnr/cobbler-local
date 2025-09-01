@@ -101,15 +101,36 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/enquiries', enquiriesRouter);
 
-// 404 handler
-app.use('*', (req, res) => {
-  logApi.error(req.method, req.url, new Error('Route not found'));
-  res.status(404).json({
-    success: false,
-    error: 'Route not found',
-    message: `Cannot ${req.method} ${req.originalUrl}`
+// Serve static files from the React app build directory
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the public directory (frontend build)
+  app.use(express.static(path.join(__dirname, '../public')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({
+        success: false,
+        error: 'API route not found',
+        message: `Cannot ${req.method} ${req.originalUrl}`
+      });
+    }
+    
+    // Serve the React app for all other routes
+    return res.sendFile(path.join(__dirname, '../public/index.html'));
   });
-});
+} else {
+  // 404 handler for development
+  app.use('*', (req, res) => {
+    logApi.error(req.method, req.url, new Error('Route not found'));
+    res.status(404).json({
+      success: false,
+      error: 'Route not found',
+      message: `Cannot ${req.method} ${req.originalUrl}`
+    });
+  });
+}
 
 // Global error handler
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -123,7 +144,7 @@ app.use((error: any, req: express.Request, res: express.Response, next: express.
 });
 
 // Initialize database and start server
-const startServer = async () => {
+const startServer = async (): Promise<void> => {
   try {
     // Initialize database connection
     await initializeDatabase();
