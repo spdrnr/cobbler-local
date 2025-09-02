@@ -265,12 +265,13 @@ export class EnquiryApiService {
   }
 }
 
-// Hook for managing enquiries with polling
-export function useEnquiriesWithPolling(pollInterval: number = 30000) {
+// Hook for managing enquiries with smart polling
+export function useEnquiriesWithPolling(pollInterval: number = 60000) { // Increased to 60 seconds
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [isPolling, setIsPolling] = useState(true);
 
   const fetchEnquiries = useCallback(async () => {
     try {
@@ -281,6 +282,12 @@ export function useEnquiriesWithPolling(pollInterval: number = 30000) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch enquiries');
       console.error('Error fetching enquiries:', err);
+      
+      // Stop polling on 429 errors to prevent further rate limiting
+      if (err instanceof Error && err.message.includes('429')) {
+        setIsPolling(false);
+        console.warn('Rate limit exceeded, stopping polling temporarily');
+      }
     } finally {
       setLoading(false);
     }
@@ -291,11 +298,25 @@ export function useEnquiriesWithPolling(pollInterval: number = 30000) {
     fetchEnquiries();
   }, [fetchEnquiries]);
 
-  // Set up polling
+  // Set up smart polling with error handling
   useEffect(() => {
+    if (!isPolling) return;
+    
     const interval = setInterval(fetchEnquiries, pollInterval);
     return () => clearInterval(interval);
-  }, [fetchEnquiries, pollInterval]);
+  }, [fetchEnquiries, pollInterval, isPolling]);
+
+  // Resume polling after 5 minutes if it was stopped due to rate limiting
+  useEffect(() => {
+    if (!isPolling) {
+      const resumeTimer = setTimeout(() => {
+        setIsPolling(true);
+        console.log('Resuming polling after rate limit cooldown');
+      }, 300000); // 5 minutes
+      
+      return () => clearTimeout(resumeTimer);
+    }
+  }, [isPolling]);
 
   // Optimistic updates for better UX
   const addEnquiryOptimistic = useCallback(async (enquiryData: Omit<Enquiry, 'id'>) => {
@@ -401,8 +422,8 @@ export function useCrmStats() {
   useEffect(() => {
     fetchStats();
     
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    // Refresh stats every 60 seconds (reduced frequency)
+    const interval = setInterval(fetchStats, 60000);
     return () => clearInterval(interval);
   }, [fetchStats]);
 

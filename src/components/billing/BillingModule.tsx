@@ -137,7 +137,7 @@ export function BillingModule() {
     loadBillingEnquiries();
     
     // Refresh data every 2 seconds to catch updates from other modules
-    const interval = setInterval(loadBillingEnquiries, 2000);
+    const interval = setInterval(loadBillingEnquiries, 10000); // Increased from 2s to 10s
     
     return () => clearInterval(interval);
   }, []);

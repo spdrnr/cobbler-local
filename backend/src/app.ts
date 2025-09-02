@@ -45,10 +45,10 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Token', 'Origin', 'Accept', 'X-Requested-With']
 }));
 
-// Rate limiting
+// Rate limiting - more generous for CRM application with polling
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000'), // limit each IP to 2000 requests per windowMs
   message: {
     success: false,
     error: 'Too many requests',
@@ -56,6 +56,8 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Skip rate limiting for health checks
+  skip: (req) => req.path === '/health' || req.path === '/api/health',
 });
 
 app.use(limiter);

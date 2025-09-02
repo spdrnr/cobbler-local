@@ -46,7 +46,7 @@ export function PickupModule() {
     loadPickupEnquiries();
     
     // Refresh data every 2 seconds to catch updates from other modules
-    const interval = setInterval(loadPickupEnquiries, 2000);
+    const interval = setInterval(loadPickupEnquiries, 10000); // Increased from 2s to 10s
     
     return () => clearInterval(interval);
   }, []);

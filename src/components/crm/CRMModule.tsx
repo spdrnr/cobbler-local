@@ -64,7 +64,7 @@ export function CRMModule({ activeAction }: CRMModuleProps = {}) {
     addEnquiry, 
     updateEnquiry,
     deleteEnquiry
-  } = useEnquiriesWithPolling(30000);
+  } = useEnquiriesWithPolling(60000); // Increased from 30s to 60s
   
   const { 
     stats, 

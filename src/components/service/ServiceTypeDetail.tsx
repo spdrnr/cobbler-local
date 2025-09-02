@@ -33,7 +33,7 @@ export function ServiceTypeDetail({ enquiryId, serviceType, onBack }: ServiceTyp
     };
     
     loadEnquiry();
-    const interval = setInterval(loadEnquiry, 2000);
+    const interval = setInterval(loadEnquiry, 10000); // Increased from 2s to 10s
     return () => clearInterval(interval);
   }, [enquiryId, serviceType]);
 

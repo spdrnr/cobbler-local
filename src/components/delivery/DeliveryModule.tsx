@@ -49,7 +49,7 @@ export function DeliveryModule() {
     loadDeliveryEnquiries();
     
     // Refresh data every 2 seconds to catch updates from other modules
-    const interval = setInterval(loadDeliveryEnquiries, 2000);
+    const interval = setInterval(loadDeliveryEnquiries, 10000); // Increased from 2s to 10s
     
     return () => clearInterval(interval);
   }, []);

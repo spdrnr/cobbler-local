@@ -32,7 +32,7 @@ export function WorkDoneModule() {
     loadWorkDoneEnquiries();
     
     // Refresh data every 2 seconds to catch newly completed items
-    const interval = setInterval(loadWorkDoneEnquiries, 2000);
+    const interval = setInterval(loadWorkDoneEnquiries, 10000); // Increased from 2s to 10s
     
     return () => clearInterval(interval);
   }, []);
