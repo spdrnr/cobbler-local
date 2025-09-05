@@ -266,6 +266,7 @@ import { WorkDoneModule } from "@/components/work-done/WorkDoneModule";
 import { CompletedModule } from "@/components/completed/CompletedModule";
 import  ReportsModule from "@/components/reports/ReportsModule";
 import { SettingsModule } from "@/components/settings/SettingsModule";
+import { BillingModule } from "@/components/billing/BillingModule";
 import { AllEnquiriesTable } from "@/components/crm/AllEnquiriesTable";
 import { PendingPickupsTable } from "@/components/pickup/PendingPickupsTable";
 import { ServiceCompletionTable } from "@/components/service/ServiceCompletionTable";
@@ -337,6 +338,8 @@ const Index = () => {
         return <PickupModule />;
       case "service":
         return <ServiceModule />;
+      case "billing":
+        return <BillingModule />;
       case "work-done":
         return <WorkDoneModule />;
       case "delivery":
